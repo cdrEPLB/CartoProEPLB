@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Cartographie Professionnelle EPL du Bourbonnais</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root { --primary: #2c3e50; --bg: #f4f7f6; --danger: #e74c3c; --success: #27ae60; }
+        body { font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; margin: 0; background: var(--bg); }
+        
+        header { padding: 15px; background: linear-gradient(90deg, #FF6A00 0%, #267F00 100%); color: white; display: flex; justify-content: space-between; align-items: center; }
+        #map-title-container { display: flex; align-items: center; gap: 10px; }
+        #map-title { font-size: 1.5rem; border-bottom: 1px dashed #fff; cursor: pointer; padding: 2px 5px; }
+        .edit-icon { cursor: pointer; opacity: 0.7; transition: opacity 0.2s; font-size: 1.2rem; }
+        .edit-icon:hover { opacity: 1; }
+        
+        .toolbar { background: linear-gradient(90deg, #FF6A00 0%, #267F00 100%); padding: 15px; border-bottom: 1px solid #bdc3c7; display: flex; gap: 10px; align-items: center; }
+        .toolbar input { padding: 8px; border: 1px solid #ccc; border-radius: 10px; }
+        
+        .main-container { display: flex; flex: 1; overflow: hidden; }
+        #map { flex: 3; }
+        #sidebar { flex: 1; background: #fff; border-left: 1px solid #bdc3c7; display: flex; flex-direction: column; min-width: 400px; }
+        #historyList { flex: 1; overflow-y: auto; }
+
+        /* Style de l'historique */
+        .location-item { padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: flex-start; }
+        .item-content { flex: 1; cursor: pointer; }
+        .title-text { font-weight: bold; color: var(--primary); font-size: 1.1rem; }
+        .cat-tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; color: white; margin-top: 5px; font-weight: bold; cursor: pointer; }
+        
+        .actions { display: flex; flex-direction: column; gap: 8px; margin-left: 10px; }
+        .icon-btn { cursor: pointer; font-size: 1.2rem; background: none; border: none; opacity: 0.6; transition: 0.2s; }
+        .icon-btn:hover { opacity: 1; transform: scale(1.1); }
+
+        /* FENÊTRES MODALES */
+        #editModal, #circleModal, #categoryModal, #editCategoryModal { 
+            display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; 
+            background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; 
+        }
+        .modal-content { 
+            background: white; padding: 25px; border-radius: 10px; width: 500px; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3); animation: fadeIn 0.3s;
+        }
+        .modal-content h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .form-group { margin-bottom: 15px; display: flex; flex-direction: column; }
+        .form-group label { font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; color: #555; }
+        .form-group input { padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        
+        /* Liste des catégories dans la modale */
+        .category-list { max-height: 200px; overflow-y: auto; margin-bottom: 15px; border: 1px solid #eee; border-radius: 4px; }
+        .category-item { 
+            padding: 10px; margin: 5px; border-radius: 20px; color: white; font-weight: bold; 
+            text-align: center; cursor: pointer; transition: transform 0.2s; display: flex; 
+            justify-content: space-between; align-items: center;
+        }
+        .category-item:hover { transform: scale(1.02); opacity: 0.9; }
+        .category-item.selected { outline: 3px solid #333; }
+        .category-item .cat-edit-btn { 
+            background: rgba(255,255,255,0.3); border: none; border-radius: 50%; 
+            width: 30px; height: 30px; cursor: pointer; font-size: 1rem;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .category-item .cat-edit-btn:hover { background: rgba(255,255,255,0.5); }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .btn { padding: 10px 18px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.3); animation: fadeIn 0.3s;}
+        .btn-save { background: var(--success); color: white; }
+        .btn-cancel { background: #95a5a6; color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-export { background: #27ae60; color: white; }
+        .btn-import { background: #FF6A00; color: white; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div id="map-title-container">
+        <div id="map-title" contenteditable="true">Mon Projet Cartographique</div>
+        <span class="edit-icon" title="Modifier le titre" onclick="document.getElementById('map-title').focus()">✏️</span>
+		</br>
+    </div>
+    <div style="display: flex; gap: 10px;">
+		<span style="padding-top:10px; padding-right:50px;">©️ 02/03/2026 JF Désiré Lycée Agricole du Bourbonnais</span>
+        <label class="btn btn-import" for="importExcel" style="padding: 8px 15px;">📥 Importer Excel</label>
+        <input type="file" id="importExcel" accept=".xlsx, .xls" onchange="importFromExcel(event)" style="display: none;">
+        <button class="btn btn-export" onclick="exportToExcel()" style="padding: 8px 15px;">💾 Exporter Excel</button>
+    </div>
+</header>
+
+<div class="toolbar">
+    <input type="text" id="addressInput" placeholder="Saisissez une adresse complète..." style="flex:1;">
+    <span style="font-weight: bold; color: white;">Ou coordonnées GPS</span>
+    <input type="number" id="latInput" placeholder="Lat" step="any" style="width: 90px;">
+    <input type="number" id="lonInput" placeholder="Lon" step="any" style="width: 90px;">
+    <button class="btn btn-save" onclick="handleAddPoint()" style="background: var(--primary);">✅ Ajouter</button>
+</div>
+
+<div class="main-container">
+    <div id="map"></div>
+    <div id="sidebar">
+        <div style="padding:15px; background:#f8f9fa; border-bottom:1px solid #eee; display: flex; justify-content: space-between;">
+            <strong>Points enregistrés</strong>
+            <small id="count-label">0 point</small>
+        </div>
+        <div id="historyList"></div>
+    </div>
+</div>
+
+<!-- Modale d'édition des informations du point -->
+<div id="editModal">
+    <div class="modal-content">
+        <h3>Modifier les informations</h3>
+        <input type="hidden" id="edit-id">
+        <div class="form-group">
+            <label>Titre / Nom du lieu</label>
+            <input type="text" id="edit-titre">
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 0.5;">
+                <label>N° de rue</label>
+                <input type="text" id="edit-numero">
+            </div>
+            <div class="form-group" style="flex: 3.5;">
+                <label>Nom de la rue</label>
+                <input type="text" id="edit-rue">
+            </div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 0.5;">
+                <label>Code Postal</label>
+                <input type="text" id="edit-cp">
+            </div>
+            <div class="form-group" style="flex: 2.5;">
+                <label>Ville</label>
+                <input type="text" id="edit-ville">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeModal()">Annuler</button>
+            <button class="btn btn-save" onclick="saveModalChanges()">Enregistrer</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modale pour configurer le cercle -->
+<div id="circleModal">
+    <div class="modal-content" style="width: 350px;">
+        <h3>Configurer le cercle</h3>
+        <input type="hidden" id="circle-point-id">
+        <div class="form-group">
+            <label>Rayon (km)</label>
+            <input type="number" id="circle-radius" value="5" min="0" step="0.1">
+        </div>
+        <div class="form-group">
+            <label>Couleur de remplissage</label>
+            <input type="color" id="circle-color" value="#3388ff">
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeCircleModal()">Annuler</button>
+            <button class="btn btn-danger" onclick="deleteCircle()">Désactiver</button>
+            <button class="btn btn-save" onclick="saveCircle()">Appliquer</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modale pour choisir une catégorie -->
+<div id="categoryModal">
+    <div class="modal-content" style="width: 450px;">
+        <h3>Choisir une catégorie</h3>
+        <input type="hidden" id="category-point-id">
+        <div class="form-group">
+            <label>Catégories existantes</label>
+            <div id="category-list" class="category-list"></div>
+        </div>
+        <div class="form-group">
+            <label>Nouvelle catégorie</label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="new-cat-name" placeholder="Nom" style="flex:2;">
+                <input type="color" id="new-cat-color" value="#3498db" style="width: 50px; height: 40px;">
+                <button class="btn btn-save" onclick="addNewCategory()" style="padding: 8px 12px;">Ajouter</button>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeCategoryModal()">Annuler</button>
+            <button class="btn btn-save" onclick="applySelectedCategory()">Choisir</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modale pour éditer une catégorie -->
+<div id="editCategoryModal">
+    <div class="modal-content" style="width: 350px;">
+        <h3>Modifier la catégorie</h3>
+        <input type="hidden" id="edit-category-oldname">
+        <div class="form-group">
+            <label>Nom de la catégorie</label>
+            <input type="text" id="edit-category-name">
+        </div>
+        <div class="form-group">
+            <label>Couleur</label>
+            <input type="color" id="edit-category-color">
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeEditCategoryModal()">Annuler</button>
+            <button class="btn btn-danger" onclick="deleteCategory()">Supprimer</button>
+            <button class="btn btn-save" onclick="saveCategoryChanges()">Enregistrer</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const map = L.map('map').setView([46.6, 2.2], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    L.control.scale({ imperial: false, metric: true }).addTo(map);
+
+    let savedLocations = [];
+    let markersLayer = L.layerGroup().addTo(map);
+    // Catégorie par défaut bien visible
+    let categories = { "Par défaut": "#e74c3c" };
+    let selectedCategoryForPoint = null; // pour stocker la catégorie sélectionnée dans la modale
+    let categoryToEdit = null; // pour la modale d'édition
+
+    function getRandomColor() {
+        const letters = '0123456789ABCDEF';
+        let color = '#';
+        for (let i = 0; i < 6; i++) color += letters[Math.floor(Math.random() * 16)];
+        return color;
+    }
+
+    // --- AJOUT ---
+    function handleAddPoint() {
+        const addr = document.getElementById('addressInput').value;
+        const lat = document.getElementById('latInput').value;
+        const lon = document.getElementById('lonInput').value;
+        if (lat && lon) addManualPoint(parseFloat(lat), parseFloat(lon));
+        else if (addr) searchAddress(addr);
+    }
+
+    async function searchAddress(query) {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            if (data.length > 0) {
+                const res = data[0];
+                const a = res.address;
+                const newLoc = {
+                    id: Date.now(),
+                    titre: query.split(',')[0],
+                    numero: a.house_number || "",
+                    rue: a.road || a.pedestrian || "N/A",
+                    ville: a.city || a.town || a.village || 'N/A',
+                    cp: a.postcode || 'N/A',
+                    lat: parseFloat(res.lat),
+                    lon: parseFloat(res.lon),
+                    categorie: "Par défaut"
+                };
+                saveAndDisplay(newLoc);
+            }
+        } catch (e) { alert("Erreur lors de la recherche."); }
+    }
+
+    function addManualPoint(lat, lon) {
+        const newLoc = {
+            id: Date.now(), titre: "Point GPS manuel",
+            numero: "", rue: "Saisie manuelle", ville: "N/A", cp: "N/A",
+            lat: lat, lon: lon, categorie: "Par défaut"
+        };
+        saveAndDisplay(newLoc);
+    }
+
+    function saveAndDisplay(loc) {
+        savedLocations.push(loc);
+        renderPointOnMap(loc);
+        updateSidebar();
+        map.setView([loc.lat, loc.lon], 13);
+        // Vider tous les champs de saisie
+        document.getElementById('addressInput').value = "";
+        document.getElementById('latInput').value = "";
+        document.getElementById('lonInput').value = "";
+    }
+
+    function renderPointOnMap(loc) {
+        const color = categories[loc.categorie] || "#333";
+        const marker = L.circleMarker([loc.lat, loc.lon], {
+            radius: 10, fillColor: color, color: "#fff", weight: 2, opacity: 1, fillOpacity: 0.9
+        }).bindPopup(`<b>${loc.titre}</b><br>${loc.numero} ${loc.rue}<br>${loc.cp} ${loc.ville}`);
+        markersLayer.addLayer(marker);
+        loc._markerId = markersLayer.getLayerId(marker);
+
+        // Si un cercle est associé à ce point, on le dessine
+        if (loc.circle) {
+            const circle = L.circle([loc.lat, loc.lon], {
+                radius: loc.circle.radiusKm * 1000,
+                color: loc.circle.color,
+                fillColor: loc.circle.color,
+                fillOpacity: 0.2,
+                weight: 1
+            });
+            markersLayer.addLayer(circle);
+            loc._circleId = markersLayer.getLayerId(circle);
+        }
+    }
+
+    // --- SIDEBAR ---
+    function updateSidebar() {
+        const list = document.getElementById('historyList');
+        document.getElementById('count-label').innerText = `${savedLocations.length} point${savedLocations.length > 1 ? 's' : ''}`;
+        list.innerHTML = "";
+        
+        savedLocations.slice().reverse().forEach((loc) => {
+            const div = document.createElement('div');
+            div.className = "location-item";
+            div.innerHTML = `
+                <div class="item-content" onclick="focusPoint(${loc.id})">
+                    <span class="title-text">${loc.titre}</span><br>
+                    <small>${loc.numero} ${loc.rue}<br>${loc.cp} ${loc.ville}</small><br>
+                    <span class="cat-tag" style="background:${categories[loc.categorie] || '#ccc'}" onclick="event.stopPropagation(); openCategoryModal(${loc.id})">${loc.categorie}</span>
+                </div>
+                <div class="actions">
+                    <button class="icon-btn" onclick="openEditModal(${loc.id})" title="Modifier">✏️</button>
+                    <button class="icon-btn" onclick="editCircle(${loc.id})" title="Cercle">⭕</button>
+                    <button class="icon-btn" onclick="deletePoint(${loc.id})" style="color:var(--danger)" title="Supprimer">🗑️</button>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    // --- MODALE ÉDITION POINT ---
+    function openEditModal(id) {
+        const loc = savedLocations.find(l => l.id === id);
+        if(!loc) return;
+        document.getElementById('edit-id').value = loc.id;
+        document.getElementById('edit-titre').value = loc.titre;
+        document.getElementById('edit-numero').value = loc.numero;
+        document.getElementById('edit-rue').value = loc.rue;
+        document.getElementById('edit-cp').value = loc.cp;
+        document.getElementById('edit-ville').value = loc.ville;
+        document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+    function saveModalChanges() {
+        const id = Number(document.getElementById('edit-id').value);
+        if (isNaN(id)) {
+            alert("Erreur : identifiant invalide.");
+            return;
+        }
+        const loc = savedLocations.find(l => l.id === id);
+        if (loc) {
+            loc.titre = document.getElementById('edit-titre').value;
+            loc.numero = document.getElementById('edit-numero').value;
+            loc.rue = document.getElementById('edit-rue').value;
+            loc.cp = document.getElementById('edit-cp').value;
+            loc.ville = document.getElementById('edit-ville').value;
+
+            refreshUI();
+            closeModal();
+        } else {
+            alert("Erreur : le point à modifier n'existe plus.");
+        }
+    }
+
+    // --- GESTION DES CATÉGORIES (modale visuelle) ---
+    function openCategoryModal(id) {
+        const loc = savedLocations.find(l => l.id === id);
+        if (!loc) return;
+        document.getElementById('category-point-id').value = id;
+        // Construire la liste des catégories
+        const listDiv = document.getElementById('category-list');
+        listDiv.innerHTML = '';
+        selectedCategoryForPoint = null;
+        Object.keys(categories).forEach(cat => {
+            const item = document.createElement('div');
+            item.className = 'category-item';
+            item.style.backgroundColor = categories[cat];
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = cat;
+            nameSpan.style.flex = '1';
+            
+            const editBtn = document.createElement('button');
+            editBtn.className = 'cat-edit-btn';
+            editBtn.innerHTML = '✏️';
+            editBtn.title = 'Modifier cette catégorie';
+            editBtn.onclick = (e) => {
+                e.stopPropagation();
+                openEditCategoryModal(cat);
+            };
+            
+            item.appendChild(nameSpan);
+            item.appendChild(editBtn);
+            
+            item.onclick = (e) => {
+                if (e.target !== editBtn) {
+                    document.querySelectorAll('.category-item').forEach(el => el.classList.remove('selected'));
+                    item.classList.add('selected');
+                    selectedCategoryForPoint = cat;
+                }
+            };
+            
+            listDiv.appendChild(item);
+        });
+        document.getElementById('categoryModal').style.display = 'flex';
+    }
+
+    function closeCategoryModal() {
+        document.getElementById('categoryModal').style.display = 'none';
+    }
+
+    function addNewCategory() {
+        const name = document.getElementById('new-cat-name').value.trim();
+        const color = document.getElementById('new-cat-color').value;
+        if (!name) {
+            alert("Veuillez saisir un nom de catégorie.");
+            return;
+        }
+        if (categories[name]) {
+            alert("Cette catégorie existe déjà.");
+            return;
+        }
+        categories[name] = color;
+        // Ajouter à la liste
+        refreshCategoryList();
+        // Vider le champ
+        document.getElementById('new-cat-name').value = '';
+    }
+
+    function refreshCategoryList() {
+        const listDiv = document.getElementById('category-list');
+        listDiv.innerHTML = '';
+        selectedCategoryForPoint = null;
+        Object.keys(categories).forEach(cat => {
+            const item = document.createElement('div');
+            item.className = 'category-item';
+            item.style.backgroundColor = categories[cat];
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = cat;
+            nameSpan.style.flex = '1';
+            
+            const editBtn = document.createElement('button');
+            editBtn.className = 'cat-edit-btn';
+            editBtn.innerHTML = '✏️';
+            editBtn.title = 'Modifier cette catégorie';
+            editBtn.onclick = (e) => {
+                e.stopPropagation();
+                openEditCategoryModal(cat);
+            };
+            
+            item.appendChild(nameSpan);
+            item.appendChild(editBtn);
+            
+            item.onclick = (e) => {
+                if (e.target !== editBtn) {
+                    document.querySelectorAll('.category-item').forEach(el => el.classList.remove('selected'));
+                    item.classList.add('selected');
+                    selectedCategoryForPoint = cat;
+                }
+            };
+            
+            listDiv.appendChild(item);
+        });
+    }
+
+    function applySelectedCategory() {
+        if (!selectedCategoryForPoint) {
+            alert("Veuillez sélectionner une catégorie.");
+            return;
+        }
+        const id = Number(document.getElementById('category-point-id').value);
+        const loc = savedLocations.find(l => l.id === id);
+        if (loc) {
+            loc.categorie = selectedCategoryForPoint;
+            refreshUI();
+        }
+        closeCategoryModal();
+    }
+
+    // --- MODALE D'ÉDITION DES CATÉGORIES ---
+    function openEditCategoryModal(categoryName) {
+        categoryToEdit = categoryName;
+        document.getElementById('edit-category-oldname').value = categoryName;
+        document.getElementById('edit-category-name').value = categoryName;
+        document.getElementById('edit-category-color').value = categories[categoryName];
+        document.getElementById('editCategoryModal').style.display = 'flex';
+        closeCategoryModal();
+    }
+
+    function closeEditCategoryModal() {
+        document.getElementById('editCategoryModal').style.display = 'none';
+        categoryToEdit = null;
+    }
+
+    function saveCategoryChanges() {
+        const oldName = document.getElementById('edit-category-oldname').value;
+        const newName = document.getElementById('edit-category-name').value.trim();
+        const newColor = document.getElementById('edit-category-color').value;
+
+        if (!newName) {
+            alert("Le nom de la catégorie ne peut pas être vide.");
+            return;
+        }
+
+        // Vérifier si le nouveau nom existe déjà (sauf si c'est le même)
+        if (oldName !== newName && categories[newName]) {
+            alert("Une catégorie avec ce nom existe déjà.");
+            return;
+        }
+
+        // Mettre à jour la couleur et le nom
+        const color = categories[oldName];
+        delete categories[oldName];
+        categories[newName] = newColor;
+
+        // Mettre à jour tous les points qui utilisaient cette catégorie
+        savedLocations.forEach(loc => {
+            if (loc.categorie === oldName) {
+                loc.categorie = newName;
+            }
+        });
+
+        refreshUI();
+        closeEditCategoryModal();
+    }
+
+    function deleteCategory() {
+        const categoryName = document.getElementById('edit-category-oldname').value;
+        
+        // Empêcher la suppression de la catégorie par défaut
+        if (categoryName === "Par défaut") {
+            alert("La catégorie par défaut ne peut pas être supprimée.");
+            return;
+        }
+
+        if (confirm(`Êtes-vous sûr de vouloir supprimer la catégorie "${categoryName}" ?`)) {
+            // Supprimer la catégorie
+            delete categories[categoryName];
+            
+            // Réaffecter les points à la catégorie par défaut
+            savedLocations.forEach(loc => {
+                if (loc.categorie === categoryName) {
+                    loc.categorie = "Par défaut";
+                }
+            });
+
+            refreshUI();
+            closeEditCategoryModal();
+        }
+    }
+
+    // --- GESTION DES CERCLES ---
+    function editCircle(id) {
+        const loc = savedLocations.find(l => l.id === id);
+        if (!loc) return;
+        document.getElementById('circle-point-id').value = id;
+        if (loc.circle) {
+            document.getElementById('circle-radius').value = loc.circle.radiusKm;
+            document.getElementById('circle-color').value = loc.circle.color;
+        } else {
+            document.getElementById('circle-radius').value = 5;
+            document.getElementById('circle-color').value = '#3388ff';
+        }
+        document.getElementById('circleModal').style.display = 'flex';
+    }
+
+    function closeCircleModal() {
+        document.getElementById('circleModal').style.display = 'none';
+    }
+
+    function saveCircle() {
+        const id = Number(document.getElementById('circle-point-id').value);
+        const loc = savedLocations.find(l => l.id === id);
+        if (!loc) return;
+        const radiusKm = parseFloat(document.getElementById('circle-radius').value);
+        const color = document.getElementById('circle-color').value;
+        if (radiusKm > 0) {
+            loc.circle = { radiusKm, color };
+        } else {
+            delete loc.circle; // rayon 0 → suppression
+        }
+        refreshUI();
+        closeCircleModal();
+    }
+
+    function deleteCircle() {
+        const id = Number(document.getElementById('circle-point-id').value);
+        const loc = savedLocations.find(l => l.id === id);
+        if (loc) {
+            delete loc.circle;
+            refreshUI();
+        }
+        closeCircleModal();
+    }
+
+    function deletePoint(id) {
+        if(confirm("Supprimer ce point ?")) {
+            savedLocations = savedLocations.filter(l => l.id !== id);
+            refreshUI();
+        }
+    }
+
+    function refreshUI() {
+        markersLayer.clearLayers();
+        savedLocations.forEach(renderPointOnMap);
+        updateSidebar();
+    }
+
+    function focusPoint(id) {
+        const loc = savedLocations.find(l => l.id === id);
+        map.setView([loc.lat, loc.lon], 15);
+        markersLayer.getLayer(loc._markerId).openPopup();
+    }
+
+    // --- EXPORT / IMPORT ---
+    function exportToExcel() {
+        const data = savedLocations.map(l => ({
+            "Titre de la Carte": document.getElementById('map-title').innerText,
+            "Nom du lieu": l.titre,
+            "Numéro": l.numero,
+            "Rue": l.rue,
+            "Code Postal": l.cp,
+            "Ville": l.ville,
+            "Latitude": l.lat,
+            "Longitude": l.lon,
+            "Catégorie": l.categorie,
+            "Couleur": categories[l.categorie],
+            "Rayon cercle (km)": l.circle ? l.circle.radiusKm : "",
+            "Couleur cercle": l.circle ? l.circle.color : ""
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Points");
+        XLSX.writeFile(wb, `${document.getElementById('map-title').innerText}.xlsx`);
+    }
+
+    function importFromExcel(event) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const json = XLSX.utils.sheet_to_json(XLSX.read(e.target.result, {type:'array'}).Sheets[XLSX.read(e.target.result, {type:'array'}).SheetNames[0]]);
+            if(json.length > 0) {
+                document.getElementById('map-title').innerText = json[0]["Titre de la Carte"] || "Projet Importé";
+                savedLocations = json.map(r => {
+                    if(r["Catégorie"] && r["Couleur"]) categories[r["Catégorie"]] = r["Couleur"];
+                    const loc = {
+                        id: Date.now() + Math.random(),
+                        titre: r["Nom du lieu"],
+                        numero: r["Numéro"] || "",
+                        rue: r["Rue"] || "",
+                        cp: r["Code Postal"] || "",
+                        ville: r["Ville"] || "",
+                        lat: parseFloat(r["Latitude"]),
+                        lon: parseFloat(r["Longitude"]),
+                        categorie: r["Catégorie"] || "Par défaut"
+                    };
+                    // Importer les données du cercle si présentes
+                    if (r["Rayon cercle (km)"] && r["Couleur cercle"]) {
+                        const radius = parseFloat(r["Rayon cercle (km)"]);
+                        if (radius > 0) {
+                            loc.circle = {
+                                radiusKm: radius,
+                                color: r["Couleur cercle"]
+                            };
+                        }
+                    }
+                    return loc;
+                });
+                refreshUI();
+            }
+        };
+        reader.readAsArrayBuffer(event.target.files[0]);
+    }
+</script>
+</body>
+</html>
