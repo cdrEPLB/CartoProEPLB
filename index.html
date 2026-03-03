@@ -8,14 +8,14 @@
     <style>
         :root { --primary: #2c3e50; --bg: #f4f7f6; --danger: #e74c3c; --success: #27ae60; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; margin: 0; background: var(--bg); }
-        header { padding: 15px; background: linear-gradient(90deg, #FF6A00 0%, #267F00 100%); color: white; display: flex; justify-content: space-between; align-items: center; }
+        header { padding: 15px; background: linear-gradient(90deg, #FF6A00 0%, #267F00 100%); color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         #map-title-container { display: flex; align-items: center; gap: 10px; }
         #map-title { font-size: 1.5rem; border-bottom: 1px dashed #fff; cursor: pointer; padding: 2px 5px; }
         .edit-icon { cursor: pointer; opacity: 0.7; transition: opacity 0.2s; font-size: 1.2rem; }
         .edit-icon:hover { opacity: 1; }
-        .toolbar { background: linear-gradient(90deg, #FF6A00 0%, #267F00 100%); padding: 15px; border-bottom: 1px solid #bdc3c7; display: flex; gap: 10px; align-items: center; }
+        .toolbar { background: linear-gradient(90deg, #FF6A00 0%, #267F00 100%); padding: 15px; border-bottom: 1px solid #bdc3c7; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         .toolbar input { padding: 8px; border: 1px solid #ccc; border-radius: 10px; }
-        .main-container { display: flex; flex: 1; overflow: hidden; }
+        .main-container { display: flex; flex: 1; overflow: hidden; position: relative; }
         #map { flex: 3; }
         #sidebar { flex: 1; background: #fff; border-left: 1px solid #bdc3c7; display: flex; flex-direction: column; min-width: 400px; }
         #historyList { flex: 1; overflow-y: auto; }
@@ -26,7 +26,7 @@
         .actions { display: flex; flex-direction: column; gap: 8px; margin-left: 10px; }
         .icon-btn { cursor: pointer; font-size: 1.2rem; background: none; border: none; opacity: 0.6; transition: 0.2s; }
         .icon-btn:hover { opacity: 1; transform: scale(1.1); }
-        #editModal, #circleModal, #categoryModal, #editCategoryModal, #isochroneModal { 
+        #editModal, #circleModal, #categoryModal, #editCategoryModal, #isochroneModal, #layersModal { 
             display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; 
             background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; 
         }
@@ -39,28 +39,60 @@
         .form-group label { font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; color: #555; }
         .form-group input, .form-group select { padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; }
         .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
-        .category-list { max-height: 200px; overflow-y: auto; margin-bottom: 15px; border: 1px solid #eee; border-radius: 4px; }
-        .category-item { 
+        .category-list, .layer-list { max-height: 200px; overflow-y: auto; margin-bottom: 15px; border: 1px solid #eee; border-radius: 4px; }
+        .category-item, .layer-item { 
             padding: 10px; margin: 5px; border-radius: 20px; color: white; font-weight: bold; 
             text-align: center; cursor: pointer; transition: transform 0.2s; display: flex; 
             justify-content: space-between; align-items: center;
         }
-        .category-item:hover { transform: scale(1.02); opacity: 0.9; }
-        .category-item.selected { outline: 3px solid #333; }
-        .category-item .cat-edit-btn { 
+        .category-item:hover, .layer-item:hover { transform: scale(1.02); opacity: 0.9; }
+        .category-item.selected, .layer-item.selected { outline: 3px solid #333; }
+        .category-item .cat-edit-btn, .layer-item .layer-edit-btn { 
             background: rgba(255,255,255,0.3); border: none; border-radius: 50%; 
             width: 30px; height: 30px; cursor: pointer; font-size: 1rem;
             display: flex; align-items: center; justify-content: center;
         }
-        .category-item .cat-edit-btn:hover { background: rgba(255,255,255,0.5); }
+        .category-item .cat-edit-btn:hover, .layer-item .layer-edit-btn:hover { background: rgba(255,255,255,0.5); }
+        .layer-visible-checkbox { margin-right: 10px; width: 20px; height: 20px; cursor: pointer; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-        .btn { padding: 10px 18px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.3); animation: fadeIn 0.3s;}
+		.btn { 
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			box-sizing: border-box;
+			padding: 10px 18px; 
+			border-radius: 4px; 
+			border: none; 
+			cursor: pointer; 
+			font-weight: bold; 
+			box-shadow: 0 5px 15px rgba(0,0,0,0.3); 
+			animation: fadeIn 0.3s;
+			line-height: 1.2;   /* uniformise la hauteur de ligne */
+			height: auto;       /* laisse le contenu définir la hauteur */
+			text-decoration: none; /* pour les éventuels soulignements */
+		}
         .btn-save { background: var(--success); color: white; }
         .btn-cancel { background: #95a5a6; color: white; }
         .btn-danger { background: var(--danger); color: white; }
         .btn-export { background: #27ae60; color: white; }
         .btn-import { background: #FF6A00; color: white; }
+		.btn-kml { background: blue; color: white; }
+		.btn-couche { background: maroon; color: white; }
+		label.btn {
+			cursor: pointer; /* déjà dans .btn */
+			}
+		
         .custom-svg-marker { background: none; border: none; }
+        .layer-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 5px; }
+        .map-copyright {
+            background: rgba(255,255,255,0.8);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: #333;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -70,13 +102,12 @@
         <div id="map-title" contenteditable="true">Mon Projet Cartographique</div>
         <span class="edit-icon" title="Modifier le titre" onclick="document.getElementById('map-title').focus()">✏️</span>
     </div>
-    <div style="display: flex; gap: 10px;">
-        <span style="padding-top:10px; padding-right:50px;font-size:small;">©️ 03/03/2026 JF Désiré Lycée Agricole du Bourbonnais</span>
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <button class="btn btn-couche" onclick="openLayersModal()" style="padding: 8px 15px;">🗂️ Gérer les couches</button>
         <label class="btn btn-import" for="importExcel" style="padding: 8px 15px;">📥 Importer Excel</label>
         <input type="file" id="importExcel" accept=".xlsx, .xls" onchange="importFromExcel(event)" style="display: none;">
         <button class="btn btn-export" onclick="exportToExcel()" style="padding: 8px 15px;">💾 Exporter Excel</button>
-        <!-- Nouveau bouton KML -->
-        <button class="btn btn-export" onclick="exportToKML()" style="padding: 8px 15px;">🗺️ Exporter KML</button>
+        <button class="btn btn-kml" onclick="exportToKML()" style="padding: 8px 15px;">🗺️ Exporter KML</button>
     </div>
 </header>
 
@@ -139,6 +170,18 @@
                 <option value="star">⭐ Étoile</option>
             </select>
         </div>
+        <!-- Sélection de la catégorie -->
+        <div class="form-group">
+            <label>Catégorie (couleur du point)</label>
+            <select id="edit-categorie"></select>
+            <small><a href="#" onclick="openCategoryModalFromEdit(); return false;">Gérer les catégories</a></small>
+        </div>
+        <!-- Sélection de la couche -->
+        <div class="form-group">
+            <label>Couche (filtrage)</label>
+            <select id="edit-layer"></select>
+            <small><a href="#" onclick="openLayersModal(); return false;">Gérer les couches</a></small>
+        </div>
         <!-- Case à cocher pour le popup permanent -->
         <div class="form-group">
             <label>
@@ -174,7 +217,7 @@
     </div>
 </div>
 
-<!-- Modale pour les isochrones avec champ de clé API -->
+<!-- Modale pour les isochrones -->
 <div id="isochroneModal">
     <div class="modal-content" style="width: 450px;">
         <h3>Zone de temps de trajet (isochrone)</h3>
@@ -196,7 +239,7 @@
             <input type="color" id="isochrone-color" value="#ff7800">
         </div>
         <div class="form-group">
-            <label>Clé API OpenRouteService (optionnel, laisser vide pour utiliser la clé par défaut)</label>
+            <label>Clé API OpenRouteService</label>
             <input type="text" id="isochrone-api-key" placeholder="ex: 5b3ce3597851110001cf6248..." value="5b3ce3597851110001cf62480b1e2e8f32b244a2b59a726038a7dd79">
             <small style="color: #666;">Obtenez une clé gratuite sur <a href="https://openrouteservice.org/signup" target="_blank">openrouteservice.org</a></small>
         </div>
@@ -253,18 +296,60 @@
     </div>
 </div>
 
+<!-- Modale pour gérer les couches -->
+<div id="layersModal">
+    <div class="modal-content" style="width: 500px;">
+        <h3>Gestion des couches</h3>
+        <div class="form-group">
+            <label>Couches existantes</label>
+            <div id="layer-list" class="layer-list"></div>
+        </div>
+        <div class="form-group">
+            <label>Nouvelle couche</label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="new-layer-name" placeholder="Nom" style="flex:2;">
+                <input type="color" id="new-layer-color" value="#808080" style="width: 50px; height: 40px;">
+                <button class="btn btn-save" onclick="addNewLayer()" style="padding: 8px 12px;">Ajouter</button>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeLayersModal()">Fermer</button>
+        </div>
+    </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+    // Initialisation de la carte
     const map = L.map('map').setView([46.6, 2.2], 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     L.control.scale({ imperial: false, metric: true }).addTo(map);
 
+    // Ajout du copyright dans la carte
+    const copyrightControl = L.control({ position: 'bottomright' });
+    copyrightControl.onAdd = function(map) {
+        const div = L.DomUtil.create('div', 'map-copyright');
+        div.innerHTML = '©️ 03/03/2026 JF Désiré Lycée Agricole du Bourbonnais';
+        return div;
+    };
+    copyrightControl.addTo(map);
+
+    // Variables globales
     let savedLocations = [];
     let markersLayer = L.layerGroup().addTo(map);
     let categories = { "Par défaut": "#e74c3c" };
+    
+    // Gestion des couches
+    let layers = [
+        { id: 'default', name: 'Par défaut', color: '#808080', visible: true }
+    ];
     let selectedCategoryForPoint = null;
 
-    // --- AJOUT ---
+    function generateId() {
+        return Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    }
+
+    // --- AJOUT DE POINTS ---
     function handleAddPoint() {
         const addr = document.getElementById('addressInput').value;
         const lat = document.getElementById('latInput').value;
@@ -291,8 +376,9 @@
                     lat: parseFloat(res.lat),
                     lon: parseFloat(res.lon),
                     categorie: "Par défaut",
+                    layerId: 'default',
                     iconType: "circle",
-                    popupAlwaysOn: false   // par défaut
+                    popupAlwaysOn: false
                 };
                 saveAndDisplay(newLoc);
             }
@@ -304,6 +390,7 @@
             id: Date.now(), titre: "Point GPS manuel",
             numero: "", rue: "Saisie manuelle", ville: "N/A", cp: "N/A",
             lat: lat, lon: lon, categorie: "Par défaut",
+            layerId: 'default',
             iconType: "circle",
             popupAlwaysOn: false
         };
@@ -312,21 +399,22 @@
 
     function saveAndDisplay(loc) {
         savedLocations.push(loc);
-        renderPointOnMap(loc);
-        updateSidebar();
+        refreshUI();
         map.setView([loc.lat, loc.lon], 13);
         document.getElementById('addressInput').value = "";
         document.getElementById('latInput').value = "";
         document.getElementById('lonInput').value = "";
     }
 
-    // Fonction modifiée pour gérer le popup permanent (tooltip)
+    // --- RENDU D'UN POINT (avec filtre de couche) ---
     function renderPointOnMap(loc) {
+        const layer = layers.find(l => l.id === loc.layerId);
+        if (!layer || !layer.visible) return;
+
         const color = categories[loc.categorie] || "#333";
         const iconType = loc.iconType || 'circle';
         let marker;
 
-        // Contenu commun
         const popupContent = `<b>${loc.titre}</b><br>${loc.numero} ${loc.rue}<br>${loc.cp} ${loc.ville}`;
 
         if (iconType === 'marker') {
@@ -381,13 +469,10 @@
             }
         }
 
-        // Attacher l'affichage selon le mode
         if (marker) {
             if (loc.popupAlwaysOn) {
-                // Tooltip permanent (visible sans clic, plusieurs peuvent coexister)
                 marker.bindTooltip(popupContent, { permanent: true, direction: 'top', offset: [0, -20] });
             } else {
-                // Popup classique (au clic)
                 marker.bindPopup(popupContent);
             }
         }
@@ -395,7 +480,7 @@
         markersLayer.addLayer(marker);
         loc._markerId = markersLayer.getLayerId(marker);
 
-        // Cercle (rayon)
+        // Cercle
         if (loc.circle) {
             const circle = L.circle([loc.lat, loc.lon], {
                 radius: loc.circle.radiusKm * 1000,
@@ -425,10 +510,17 @@
     // --- SIDEBAR ---
     function updateSidebar() {
         const list = document.getElementById('historyList');
-        document.getElementById('count-label').innerText = `${savedLocations.length} point${savedLocations.length > 1 ? 's' : ''}`;
+        const visibleCount = savedLocations.filter(loc => {
+            const layer = layers.find(l => l.id === loc.layerId);
+            return layer && layer.visible;
+        }).length;
+        document.getElementById('count-label').innerText = `${visibleCount} point${visibleCount > 1 ? 's' : ''} affiché${visibleCount > 1 ? 's' : ''}`;
         list.innerHTML = "";
         
         savedLocations.slice().reverse().forEach((loc) => {
+            const layer = layers.find(l => l.id === loc.layerId);
+            if (!layer || !layer.visible) return;
+
             const div = document.createElement('div');
             div.className = "location-item";
             div.innerHTML = `
@@ -436,6 +528,7 @@
                     <span class="title-text">${loc.titre}</span><br>
                     <small>${loc.numero} ${loc.rue}<br>${loc.cp} ${loc.ville}</small><br>
                     <span class="cat-tag" style="background:${categories[loc.categorie] || '#ccc'}" onclick="event.stopPropagation(); openCategoryModal(${loc.id})">${loc.categorie}</span>
+                    <span style="display:inline-block; margin-left:5px;"><span class="layer-indicator" style="background:${layer.color}"></span>${layer.name}</span>
                 </div>
                 <div class="actions">
                     <button class="icon-btn" onclick="openEditModal(${loc.id})" title="Modifier">✏️</button>
@@ -460,6 +553,29 @@
         document.getElementById('edit-ville').value = loc.ville;
         document.getElementById('edit-icon-type').value = loc.iconType || 'circle';
         document.getElementById('edit-popup-always').checked = loc.popupAlwaysOn || false;
+
+        // Remplir les catégories
+        const catSelect = document.getElementById('edit-categorie');
+        catSelect.innerHTML = '';
+        Object.keys(categories).forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            opt.textContent = cat;
+            if (cat === loc.categorie) opt.selected = true;
+            catSelect.appendChild(opt);
+        });
+
+        // Remplir les couches
+        const layerSelect = document.getElementById('edit-layer');
+        layerSelect.innerHTML = '';
+        layers.forEach(layer => {
+            const opt = document.createElement('option');
+            opt.value = layer.id;
+            opt.textContent = layer.name;
+            if (layer.id === loc.layerId) opt.selected = true;
+            layerSelect.appendChild(opt);
+        });
+
         document.getElementById('editModal').style.display = 'flex';
     }
 
@@ -477,6 +593,8 @@
             loc.cp = document.getElementById('edit-cp').value;
             loc.ville = document.getElementById('edit-ville').value;
             loc.iconType = document.getElementById('edit-icon-type').value;
+            loc.categorie = document.getElementById('edit-categorie').value;
+            loc.layerId = document.getElementById('edit-layer').value;
             loc.popupAlwaysOn = document.getElementById('edit-popup-always').checked;
             refreshUI();
             closeModal();
@@ -490,6 +608,14 @@
         document.getElementById('category-point-id').value = id;
         refreshCategoryList();
         document.getElementById('categoryModal').style.display = 'flex';
+    }
+
+    function openCategoryModalFromEdit() {
+        const id = document.getElementById('edit-id').value;
+        if (id) {
+            openCategoryModal(Number(id));
+            closeModal();
+        }
     }
 
     function refreshCategoryList() {
@@ -584,6 +710,118 @@
         }
     }
 
+    // --- GESTION DES COUCHES ---
+    function openLayersModal() {
+        refreshLayerList();
+        document.getElementById('layersModal').style.display = 'flex';
+    }
+
+    function closeLayersModal() {
+        document.getElementById('layersModal').style.display = 'none';
+    }
+
+    function refreshLayerList() {
+        const listDiv = document.getElementById('layer-list');
+        listDiv.innerHTML = '';
+        layers.forEach(layer => {
+            const item = document.createElement('div');
+            item.className = 'layer-item';
+            item.style.backgroundColor = layer.color;
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'layer-visible-checkbox';
+            checkbox.checked = layer.visible;
+            checkbox.onclick = (e) => {
+                e.stopPropagation();
+                layer.visible = checkbox.checked;
+                refreshUI();
+            };
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = layer.name;
+            nameSpan.style.flex = '1';
+            nameSpan.style.marginLeft = '5px';
+            
+            const editBtn = document.createElement('button');
+            editBtn.className = 'layer-edit-btn';
+            editBtn.innerHTML = '✏️';
+            editBtn.onclick = (e) => {
+                e.stopPropagation();
+                editLayer(layer.id);
+            };
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'layer-edit-btn';
+            deleteBtn.innerHTML = '🗑️';
+            deleteBtn.style.marginLeft = '5px';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                deleteLayer(layer.id);
+            };
+            
+            item.appendChild(checkbox);
+            item.appendChild(nameSpan);
+            item.appendChild(editBtn);
+            if (layer.id !== 'default') {
+                item.appendChild(deleteBtn);
+            }
+            listDiv.appendChild(item);
+        });
+    }
+
+    function addNewLayer() {
+        const name = document.getElementById('new-layer-name').value.trim();
+        const color = document.getElementById('new-layer-color').value;
+        if (!name) { alert("Veuillez saisir un nom."); return; }
+        if (layers.some(l => l.name === name)) {
+            alert("Une couche avec ce nom existe déjà.");
+            return;
+        }
+        const newLayer = {
+            id: generateId(),
+            name: name,
+            color: color,
+            visible: true
+        };
+        layers.push(newLayer);
+        refreshLayerList();
+        document.getElementById('new-layer-name').value = '';
+    }
+
+    function editLayer(layerId) {
+        const layer = layers.find(l => l.id === layerId);
+        if (!layer) return;
+        const newName = prompt("Nouveau nom de la couche :", layer.name);
+        if (newName === null) return;
+        if (newName.trim() === '') { alert("Le nom ne peut pas être vide."); return; }
+        if (layers.some(l => l.id !== layerId && l.name === newName.trim())) {
+            alert("Une autre couche porte déjà ce nom.");
+            return;
+        }
+        const newColor = prompt("Nouvelle couleur (ex: #RRGGBB) :", layer.color);
+        if (newColor === null) return;
+        if (!/^#[0-9A-F]{6}$/i.test(newColor)) { alert("Couleur invalide. Utilisez le format #RRGGBB."); return; }
+        layer.name = newName.trim();
+        layer.color = newColor;
+        refreshLayerList();
+        refreshUI();
+    }
+
+    function deleteLayer(layerId) {
+        if (layerId === 'default') {
+            alert("Impossible de supprimer la couche par défaut.");
+            return;
+        }
+        if (!confirm("Supprimer cette couche ? Les points de cette couche seront réaffectés à la couche par défaut.")) return;
+        savedLocations.forEach(loc => {
+            if (loc.layerId === layerId) loc.layerId = 'default';
+        });
+        layers = layers.filter(l => l.id !== layerId);
+        refreshLayerList();
+        refreshUI();
+    }
+
     // --- CERCLES ---
     function editCircle(id) {
         const loc = savedLocations.find(l => l.id === id);
@@ -661,7 +899,7 @@
         const apiKey = document.getElementById('isochrone-api-key').value.trim();
 
         if (!apiKey) {
-            alert("Veuillez entrer une clé API OpenRouteService (ou utilisez la clé par défaut).");
+            alert("Veuillez entrer une clé API OpenRouteService.");
             return;
         }
 
@@ -743,35 +981,36 @@
         map.setView([loc.lat, loc.lon], 15);
         const marker = markersLayer.getLayer(loc._markerId);
         if (marker) {
-            if (loc.popupAlwaysOn) {
-                // Rien à faire, le tooltip est déjà visible
-            } else {
-                marker.openPopup();
-            }
+            if (!loc.popupAlwaysOn) marker.openPopup();
         }
     }
 
-    // --- EXPORT EXCEL (inchangé) ---
+    // --- EXPORT EXCEL ---
     async function exportToExcel() {
         if (!ensureXLSX()) return;
 
-        const data = savedLocations.map(l => ({
-            "Titre de la Carte": document.getElementById('map-title').innerText,
-            "Nom du lieu": l.titre,
-            "Numéro": l.numero,
-            "Rue": l.rue,
-            "Code Postal": l.cp,
-            "Ville": l.ville,
-            "Latitude": l.lat,
-            "Longitude": l.lon,
-            "Catégorie": l.categorie,
-            "Couleur": categories[l.categorie],
-            "Rayon cercle (km)": l.circle ? l.circle.radiusKm : "",
-            "Couleur cercle": l.circle ? l.circle.color : "",
-            "Type d'icône": l.iconType || "circle",
-            "Isochrone": l.isochrone ? JSON.stringify(l.isochrone) : "",
-            "Popup toujours visible": l.popupAlwaysOn ? "true" : "false"
-        }));
+        const data = savedLocations.map(l => {
+            const layer = layers.find(ly => ly.id === l.layerId) || layers[0];
+            return {
+                "Titre de la Carte": document.getElementById('map-title').innerText,
+                "Nom du lieu": l.titre,
+                "Numéro": l.numero,
+                "Rue": l.rue,
+                "Code Postal": l.cp,
+                "Ville": l.ville,
+                "Latitude": l.lat,
+                "Longitude": l.lon,
+                "Catégorie": l.categorie,
+                "Couleur": categories[l.categorie],
+                "Couche": layer.name,
+                "Couleur couche": layer.color,
+                "Rayon cercle (km)": l.circle ? l.circle.radiusKm : "",
+                "Couleur cercle": l.circle ? l.circle.color : "",
+                "Type d'icône": l.iconType || "circle",
+                "Isochrone": l.isochrone ? JSON.stringify(l.isochrone) : "",
+                "Popup toujours visible": l.popupAlwaysOn ? "true" : "false"
+            };
+        });
 
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
@@ -808,7 +1047,7 @@
         }
     }
 
-    // --- IMPORT EXCEL (inchangé) ---
+    // --- IMPORT EXCEL ---
     function importFromExcel(event) {
         if (!ensureXLSX()) return;
         const file = event.target.files[0];
@@ -829,8 +1068,27 @@
                     const newLocations = [];
                     json.forEach(row => {
                         const cat = row["Catégorie"];
-                        const color = row["Couleur"];
-                        if (cat && color) categories[cat] = color;
+                        const catColor = row["Couleur"];
+                        if (cat && catColor && !categories[cat]) {
+                            categories[cat] = catColor;
+                        }
+
+                        let layerId = 'default';
+                        const layerName = row["Couche"];
+                        const layerColor = row["Couleur couche"];
+                        if (layerName) {
+                            let existingLayer = layers.find(l => l.name === layerName);
+                            if (!existingLayer) {
+                                existingLayer = {
+                                    id: generateId(),
+                                    name: layerName,
+                                    color: layerColor || '#808080',
+                                    visible: true
+                                };
+                                layers.push(existingLayer);
+                            }
+                            layerId = existingLayer.id;
+                        }
 
                         const lat = parseFloat(row["Latitude"]);
                         const lon = parseFloat(row["Longitude"]);
@@ -846,6 +1104,7 @@
                             lat: lat,
                             lon: lon,
                             categorie: cat || "Par défaut",
+                            layerId: layerId,
                             iconType: row["Type d'icône"] || "circle",
                             popupAlwaysOn: row["Popup toujours visible"] === "true"
                         };
@@ -892,15 +1151,13 @@
         return false;
     }
 
-    // --- NOUVELLE FONCTION D'EXPORT KML ---
+    // --- EXPORT KML ---
     function exportToKML() {
-        // Construction du contenu KML
         let kml = '<?xml version="1.0" encoding="UTF-8"?>\n';
         kml += '<kml xmlns="http://www.opengis.net/kml/2.2">\n';
         kml += '  <Document>\n';
         kml += `    <name>${escapeXML(document.getElementById('map-title').innerText)}</name>\n`;
 
-        // Styles pour chaque catégorie
         const styleIds = {};
         for (let cat in categories) {
             const color = categories[cat];
@@ -917,25 +1174,25 @@
             kml += `        <color>${kmlColor}</color>\n`;
             kml += `      </LabelStyle>\n`;
             kml += `      <PolyStyle>\n`;
-            kml += `        <color>${kmlColor}66</color>\n`; // 66 = 40% d'opacité
+            kml += `        <color>${kmlColor}66</color>\n`;
             kml += `        <fill>1</fill>\n`;
             kml += `        <outline>1</outline>\n`;
             kml += `      </PolyStyle>\n`;
             kml += `    </Style>\n`;
         }
 
-        // Pour chaque point, créer un Placemark
         savedLocations.forEach(loc => {
             const cat = loc.categorie || "Par défaut";
             const styleId = styleIds[cat] || '';
+            const layer = layers.find(l => l.id === loc.layerId) || layers[0];
 
-            // Placemark du point principal
             kml += `    <Placemark>\n`;
             kml += `      <name>${escapeXML(loc.titre)}</name>\n`;
             kml += `      <description>${escapeXML(loc.numero + ' ' + loc.rue + '<br>' + loc.cp + ' ' + loc.ville)}</description>\n`;
             kml += `      <styleUrl>#${styleId}</styleUrl>\n`;
             kml += `      <ExtendedData>\n`;
             kml += `        <Data name="categorie"><value>${escapeXML(cat)}</value></Data>\n`;
+            kml += `        <Data name="couche"><value>${escapeXML(layer.name)}</value></Data>\n`;
             kml += `        <Data name="adresse"><value>${escapeXML(loc.numero + ' ' + loc.rue + ', ' + loc.cp + ' ' + loc.ville)}</value></Data>\n`;
             kml += `        <Data name="latitude"><value>${loc.lat}</value></Data>\n`;
             kml += `        <Data name="longitude"><value>${loc.lon}</value></Data>\n`;
@@ -951,16 +1208,14 @@
             kml += `      <Point><coordinates>${loc.lon},${loc.lat},0</coordinates></Point>\n`;
             kml += `    </Placemark>\n`;
 
-            // Si un cercle est défini, ajouter un polygone correspondant
             if (loc.circle && loc.circle.radiusKm > 0) {
                 const centerLat = loc.lat;
                 const centerLon = loc.lon;
                 const radiusM = loc.circle.radiusKm * 1000;
                 const points = [];
-                const steps = 36; // Nombre de points pour approximer le cercle
+                const steps = 36;
                 for (let i = 0; i <= steps; i++) {
                     const angle = (i / steps) * 2 * Math.PI;
-                    // Déplacement approximatif : 1 degré de latitude ≈ 111 111 m, 1 degré de longitude dépend de la latitude
                     const latOffset = (radiusM / 111111) * Math.sin(angle);
                     const lonOffset = (radiusM / (111111 * Math.cos(centerLat * Math.PI / 180))) * Math.cos(angle);
                     const lat = centerLat + latOffset;
@@ -969,7 +1224,7 @@
                 }
                 const kmlColor = hexToKMLColor(loc.circle.color);
                 kml += `    <Placemark>\n`;
-                kml += `      <name>Cercle de ${loc.titre}</name>\n`;
+                kml += `      <name>Cercle de ${escapeXML(loc.titre)}</name>\n`;
                 kml += `      <description>Rayon : ${loc.circle.radiusKm} km</description>\n`;
                 kml += `      <Style>\n`;
                 kml += `        <PolyStyle>\n`;
@@ -988,14 +1243,12 @@
                 kml += `    </Placemark>\n`;
             }
 
-            // Si une isochrone est définie, ajouter un polygone
             if (loc.isochrone && loc.isochrone.geometry && loc.isochrone.geometry.length > 0) {
-                // La géométrie est stockée comme une liste de [lon, lat] (déjà dans le bon ordre pour KML)
                 const coords = loc.isochrone.geometry.map(p => `${p[0]},${p[1]},0`).join(' ');
                 const kmlColor = hexToKMLColor(loc.isochrone.color);
                 kml += `    <Placemark>\n`;
                 kml += `      <name>Isochrone ${loc.isochrone.duration} min (${loc.isochrone.mode})</name>\n`;
-                kml += `      <description>Depuis ${loc.titre}</description>\n`;
+                kml += `      <description>Depuis ${escapeXML(loc.titre)}</description>\n`;
                 kml += `      <Style>\n`;
                 kml += `        <PolyStyle>\n`;
                 kml += `          <color>${kmlColor}66</color>\n`;
@@ -1017,7 +1270,6 @@
         kml += '  </Document>\n';
         kml += '</kml>';
 
-        // Téléchargement du fichier
         const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1029,7 +1281,6 @@
         URL.revokeObjectURL(url);
     }
 
-    // Fonction utilitaire pour échapper les caractères XML
     function escapeXML(str) {
         if (!str) return '';
         return str.replace(/[<>&'"]/g, function(c) {
@@ -1044,7 +1295,6 @@
         });
     }
 
-    // Convertit une couleur hexadécimale (#RRGGBB) en format KML AABBGGRR (avec alpha=ff)
     function hexToKMLColor(hex) {
         if (!hex) return 'ffffffff';
         hex = hex.replace('#', '');
@@ -1054,7 +1304,7 @@
         const r = hex.substring(0,2);
         const g = hex.substring(2,4);
         const b = hex.substring(4,6);
-        return 'ff' + b + g + r; // AABBGGRR
+        return 'ff' + b + g + r;
     }
 </script>
 </body>
