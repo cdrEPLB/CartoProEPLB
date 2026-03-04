@@ -33,6 +33,9 @@
         .modal-content { 
             background: white; padding: 25px; border-radius: 10px; width: 500px; 
             box-shadow: 0 5px 15px rgba(0,0,0,0.3); animation: fadeIn 0.3s;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
         }
         .modal-content h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid #eee; padding-bottom: 10px; }
         .form-group { margin-bottom: 15px; display: flex; flex-direction: column; }
@@ -55,33 +58,30 @@
         .category-item .cat-edit-btn:hover, .layer-item .layer-edit-btn:hover { background: rgba(255,255,255,0.5); }
         .layer-visible-checkbox { margin-right: 10px; width: 20px; height: 20px; cursor: pointer; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-		.btn { 
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			box-sizing: border-box;
-			padding: 10px 18px; 
-			border-radius: 4px; 
-			border: none; 
-			cursor: pointer; 
-			font-weight: bold; 
-			box-shadow: 0 5px 15px rgba(0,0,0,0.3); 
-			animation: fadeIn 0.3s;
-			line-height: 1.2;   /* uniformise la hauteur de ligne */
-			height: auto;       /* laisse le contenu définir la hauteur */
-			text-decoration: none; /* pour les éventuels soulignements */
-		}
+        .btn { 
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            padding: 10px 18px; 
+            border-radius: 4px; 
+            border: none; 
+            cursor: pointer; 
+            font-weight: bold; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3); 
+            animation: fadeIn 0.3s;
+            line-height: 1.2;
+            height: auto;
+            text-decoration: none;
+        }
         .btn-save { background: var(--success); color: white; }
         .btn-cancel { background: #95a5a6; color: white; }
         .btn-danger { background: var(--danger); color: white; }
         .btn-export { background: #27ae60; color: white; }
         .btn-import { background: #FF6A00; color: white; }
-		.btn-kml { background: blue; color: white; }
-		.btn-couche { background: maroon; color: white; }
-		label.btn {
-			cursor: pointer; /* déjà dans .btn */
-			}
-		
+        .btn-kml { background: blue; color: white; }
+        .btn-couche { background: maroon; color: white; }
+        label.btn { cursor: pointer; }
         .custom-svg-marker { background: none; border: none; }
         .layer-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 5px; }
         .map-copyright {
@@ -329,7 +329,7 @@
     const copyrightControl = L.control({ position: 'bottomright' });
     copyrightControl.onAdd = function(map) {
         const div = L.DomUtil.create('div', 'map-copyright');
-        div.innerHTML = '©️ 03/03/2026 JF Désiré Lycée Agricole du Bourbonnais';
+        div.innerHTML = '©️ 04/03/2026 JF Désiré Lycée Agricole du Bourbonnais';
         return div;
     };
     copyrightControl.addTo(map);
@@ -527,8 +527,14 @@
                 <div class="item-content" onclick="focusPoint(${loc.id})">
                     <span class="title-text">${loc.titre}</span><br>
                     <small>${loc.numero} ${loc.rue}<br>${loc.cp} ${loc.ville}</small><br>
-                    <span class="cat-tag" style="background:${categories[loc.categorie] || '#ccc'}" onclick="event.stopPropagation(); openCategoryModal(${loc.id})">${loc.categorie}</span>
-                    <span style="display:inline-block; margin-left:5px;"><span class="layer-indicator" style="background:${layer.color}"></span>${layer.name}</span>
+                    <span style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                        <span style="font-size:0.8rem; color:#555;">Cat. :</span>
+                        <span class="cat-tag" style="background:${categories[loc.categorie] || '#ccc'}" onclick="event.stopPropagation(); openCategoryModal(${loc.id})">${loc.categorie}</span>
+                        <span style="font-size:0.8rem; color:#555; margin-left:5px;">Couche :</span>
+                        <span style="display:inline-flex; align-items:center; cursor:pointer;" onclick="event.stopPropagation(); openLayersModal()">
+                            <span class="layer-indicator" style="background:${layer.color}"></span>${layer.name}
+                        </span>
+                    </span>
                 </div>
                 <div class="actions">
                     <button class="icon-btn" onclick="openEditModal(${loc.id})" title="Modifier">✏️</button>
@@ -793,19 +799,34 @@
         const layer = layers.find(l => l.id === layerId);
         if (!layer) return;
         const newName = prompt("Nouveau nom de la couche :", layer.name);
-        if (newName === null) return;
-        if (newName.trim() === '') { alert("Le nom ne peut pas être vide."); return; }
+        if (newName === null || newName.trim() === '') return;
         if (layers.some(l => l.id !== layerId && l.name === newName.trim())) {
             alert("Une autre couche porte déjà ce nom.");
             return;
         }
-        const newColor = prompt("Nouvelle couleur (ex: #RRGGBB) :", layer.color);
-        if (newColor === null) return;
-        if (!/^#[0-9A-F]{6}$/i.test(newColor)) { alert("Couleur invalide. Utilisez le format #RRGGBB."); return; }
-        layer.name = newName.trim();
-        layer.color = newColor;
-        refreshLayerList();
-        refreshUI();
+        // Création d'un input color temporaire
+        const colorInput = document.createElement('input');
+        colorInput.type = 'color';
+        colorInput.value = layer.color;
+        colorInput.style.position = 'absolute';
+        colorInput.style.left = '-9999px';
+        document.body.appendChild(colorInput);
+
+        colorInput.addEventListener('change', function() {
+            const newColor = this.value;
+            layer.name = newName.trim();
+            layer.color = newColor;
+            refreshLayerList();
+            refreshUI();
+            document.body.removeChild(colorInput);
+        });
+
+        colorInput.addEventListener('blur', function() {
+            // Si l'utilisateur ferme le sélecteur sans choisir, on ne fait rien
+            document.body.removeChild(colorInput);
+        });
+
+        colorInput.click(); // Ouvre le sélecteur de couleur
     }
 
     function deleteLayer(layerId) {
