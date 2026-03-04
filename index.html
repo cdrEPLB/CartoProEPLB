@@ -15,6 +15,8 @@
         .edit-icon:hover { opacity: 1; }
         .toolbar { background: linear-gradient(90deg, #FF6A00 0%, #267F00 100%); padding: 10px; border-bottom: 1px solid #bdc3c7; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         .toolbar input { padding: 8px; border: 1px solid #ccc; border-radius: 10px; }
+		#addressInput { flex: 0.75; min-width: 200px;  } 
+		#latInput, #lonInput { flex: 0.15; } 	
         .main-container { display: flex; flex: 1; overflow: hidden; position: relative; }
         #map { flex: 3; }
         #sidebar { flex: 1; background: #fff; border-left: 1px solid #bdc3c7; display: flex; flex-direction: column; min-width: 400px; }
@@ -23,8 +25,23 @@
         .item-content { flex: 1; cursor: pointer; }
         .title-text { font-weight: bold; color: var(--primary); font-size: 1.1rem; }
         .cat-tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; color: white; margin-top: 5px; font-weight: bold; cursor: pointer; }
-        .actions { display: flex; flex-direction: column; gap: 8px; margin-left: 10px; }
-        .icon-btn { cursor: pointer; font-size: 1.2rem; background: none; border: none; opacity: 0.6; transition: 0.2s; }
+        .actions { display: flex; flex-direction: column; gap: 6px; margin-left: 10px; }
+        .icon-btn { cursor: pointer; font-size: 0.9rem; background: none; border: none; opacity: 0.6; transition: 0.2s; } 
+ <!-- .actions { display: flex; flex-direction: column; gap: 6px; margin-left: 10px; } -->
+        <!-- .icon-btn {  -->
+            <!-- cursor: pointer;  -->
+            <!-- font-size: 0.9rem; -->
+            <!-- background: none;  -->
+            <!-- border: none;  -->
+            <!-- opacity: 0.6;  -->
+            <!-- transition: 0.2s;  -->
+            <!-- padding: 2px; -->
+            <!-- width: 26px; -->
+            <!-- height: 26px; -->
+            <!-- display: inline-flex; -->
+            <!-- align-items: center; -->
+            <!-- justify-content: center; -->
+        <!-- } -->
         .icon-btn:hover { opacity: 1; transform: scale(1.1); }
         #editModal, #circleModal, #categoryModal, #editCategoryModal, #isochroneModal, #layersModal, #routeModal { 
             display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; 
@@ -50,12 +67,14 @@
         }
         .category-item:hover, .layer-item:hover { transform: scale(1.02); opacity: 0.9; }
         .category-item.selected, .layer-item.selected { outline: 3px solid #333; }
-        .category-item .cat-edit-btn, .layer-item .layer-edit-btn { 
+        .category-item .cat-edit-btn, .layer-item .layer-edit-btn,
+        .category-item .cat-delete-btn, .layer-item .layer-delete-btn { 
             background: rgba(255,255,255,0.3); border: none; border-radius: 50%; 
             width: 30px; height: 30px; cursor: pointer; font-size: 1rem;
-            display: flex; align-items: center; justify-content: center;
+            display: inline-flex; align-items: center; justify-content: center; margin-left: 5px;
         }
-        .category-item .cat-edit-btn:hover, .layer-item .layer-edit-btn:hover { background: rgba(255,255,255,0.5); }
+        .category-item .cat-edit-btn:hover, .layer-item .layer-edit-btn:hover,
+        .category-item .cat-delete-btn:hover, .layer-item .layer-delete-btn:hover { background: rgba(255,255,255,0.5); }
         .layer-visible-checkbox { margin-right: 10px; width: 20px; height: 20px; cursor: pointer; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
         .btn { 
@@ -81,6 +100,21 @@
         .btn-import { background: #FF6A00; color: white; }
         .btn-kml { background: blue; color: white; }
         .btn-couche { background: maroon; color: white; }
+        .btn-sort { 
+            flex: 1; 
+            border: none; 
+            border-radius: 5px; 
+            padding: 5px; 
+            font-size: 0.8rem; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 3px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        .btn-sort:hover { opacity: 1; }
         label.btn { cursor: pointer; }
         .custom-svg-marker { background: none; border: none; }
         .layer-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 5px; }
@@ -93,6 +127,7 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
             pointer-events: none;
         }
+        .action-buttons { display: flex; gap: 2px; }
     </style>
 </head>
 <body>
@@ -114,10 +149,10 @@
 </header>
 
 <div class="toolbar">
-    <input type="text" id="addressInput" placeholder="Saisissez une adresse complète..." style="flex:1;">
+    <input type="text" id="addressInput" placeholder="Saisissez une adresse complète..." >
     <span style="font-weight: bold; color: white;">Ou coordonnées GPS</span>
-    <input type="number" id="latInput" placeholder="Lat" step="any" style="width: 90px;">
-    <input type="number" id="lonInput" placeholder="Lon" step="any" style="width: 90px;">
+    <input type="number" id="latInput" placeholder="Lat" step="any" >
+    <input type="number" id="lonInput" placeholder="Lon" step="any" >
     <button class="btn btn-save" onclick="handleAddPoint()" style="background: var(--primary);">✅ Ajouter le Point</button>
 
 </div>
@@ -125,12 +160,39 @@
 <div class="main-container">
     <div id="map"></div>
     <div id="sidebar">
-        <div style="padding:5px; background:rgba(192,192,192); border-bottom:1px solid #eee; display: flex; justify-content: space-between;">
-            <strong id="count-label" style="padding-top:10px;">0 Pts</strong>
+        <div style="padding:8px; background:rgba(192,192,192); border-bottom:1px solid #eee;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                <strong id="count-label">0 Pts</strong>
+                <div>
+                    <button class="btn btn-couche" onclick="openLayersModal()" style="padding: 5px 10px; font-size:0.9rem;">🗂️ Couches</button>
+                    <button class="btn" onclick="openRouteModal()" style="background: purple; color: white; padding: 5px 10px; font-size:0.9rem;">🗺️ Itinéraire</button>
+                </div>
+            </div>
             
-				        <button class="btn btn-couche" onclick="openLayersModal()" style="padding: 8px 15px;">🗂️ Couches</button>
-        <button class="btn" onclick="openRouteModal()" style="background: purple; color: white; padding: 8px 15px;">🗺️ Itinéraire</button>
+
         </div>
+		
+		            <!-- Boutons de tri -->
+            <div style="display: flex; gap: 3px; margin-top: 5px; flex-wrap: wrap;">
+                <button class="btn-sort" onclick="sortLocations('titre', 'asc', this)" style="background:#34495e; color:white;" title="Trier par titre (A à Z)">
+                    <span>📝 ▲</span>
+                </button>
+                <button class="btn-sort" onclick="sortLocations('titre', 'desc', this)" style="background:#34495e; color:white;" title="Trier par titre (Z à A)">
+                    <span>📝 ▼</span>
+                </button>
+                <button class="btn-sort" onclick="sortLocations('layer', 'asc', this)" style="background:#27ae60; color:white;" title="Trier par couche (A à Z)">
+                    <span>📁 ▲</span>
+                </button>
+                <button class="btn-sort" onclick="sortLocations('layer', 'desc', this)" style="background:#27ae60; color:white;" title="Trier par couche (Z à A)">
+                    <span>📁 ▼</span>
+                </button>
+                <button class="btn-sort" onclick="sortLocations('categorie', 'asc', this)" style="background:#e67e22; color:white;" title="Trier par catégorie (A à Z)">
+                    <span>🏷️ ▲</span>
+                </button>
+                <button class="btn-sort" onclick="sortLocations('categorie', 'desc', this)" style="background:#e67e22; color:white;" title="Trier par catégorie (Z à A)">
+                    <span>🏷️ ▼</span>
+                </button>
+            </div>
         <div id="historyList"></div>
     </div>
 </div>
@@ -305,6 +367,7 @@
 <div id="layersModal">
     <div class="modal-content" style="width: 500px;">
         <h3>Gestion des couches</h3>
+        <input type="hidden" id="layer-point-id">
         <div class="form-group">
             <label>Couches existantes</label>
             <div id="layer-list" class="layer-list"></div>
@@ -319,6 +382,7 @@
         </div>
         <div class="modal-footer">
             <button class="btn btn-cancel" onclick="closeLayersModal()">Fermer</button>
+            <button class="btn btn-save" onclick="applySelectedLayer()">Choisir</button>
         </div>
     </div>
 </div>
@@ -381,6 +445,7 @@
         { id: 'default', name: 'Par défaut', color: '#808080', visible: true }
     ];
     let selectedCategoryForPoint = null;
+    let selectedLayerForPoint = null;
 
     // Gestion itinéraire
     let routeLayer = L.layerGroup().addTo(map);
@@ -447,7 +512,7 @@
         document.getElementById('lonInput').value = "";
     }
 
-    // --- RENDU D'UN POINT (avec filtre de couche) ---
+    // --- RENDU D'UN POINT ---
     function renderPointOnMap(loc) {
         const layer = layers.find(l => l.id === loc.layerId);
         if (!layer || !layer.visible) return;
@@ -521,7 +586,6 @@
         markersLayer.addLayer(marker);
         loc._markerId = markersLayer.getLayerId(marker);
 
-        // Cercle
         if (loc.circle) {
             const circle = L.circle([loc.lat, loc.lon], {
                 radius: loc.circle.radiusKm * 1000,
@@ -534,7 +598,6 @@
             loc._circleId = markersLayer.getLayerId(circle);
         }
 
-        // Isochrone
         if (loc.isochrone && loc.isochrone.geometry) {
             const coords = loc.isochrone.geometry.map(p => [p[1], p[0]]);
             const polygon = L.polygon(coords, {
@@ -566,15 +629,14 @@
             div.className = "location-item";
             div.innerHTML = `
                 <div class="item-content" onclick="focusPoint(${loc.id})">
-                    <span class="title-text">${loc.titre}</span><br>
+                    <span class="title-text">📝 ${loc.titre}</span><br>
                     <small>${loc.numero} ${loc.rue}<br>${loc.cp} ${loc.ville}</small><br>
                     <span style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
-                        <span style="font-size:0.8rem; color:#555;">Cat. :</span>
+                        <span style="font-size:0.8rem; color:#555; ">📁Couche :</span>
+                        <span class="cat-tag" style="background:${layer.color}; cursor:pointer;" onclick="event.stopPropagation(); openLayersModalForPoint(${loc.id})">${layer.name}</span>
+						<span style="font-size:0.8rem; color:#555;">🏷️Cat. :</span>
                         <span class="cat-tag" style="background:${categories[loc.categorie] || '#ccc'}" onclick="event.stopPropagation(); openCategoryModal(${loc.id})">${loc.categorie}</span>
-                        <span style="font-size:0.8rem; color:#555; margin-left:5px;">Couche :</span>
-                        <span style="display:inline-flex; align-items:center; cursor:pointer;" onclick="event.stopPropagation(); openLayersModal()">
-                            <span class="layer-indicator" style="background:${layer.color}"></span>${layer.name}
-                        </span>
+  
                     </span>
                 </div>
                 <div class="actions">
@@ -586,6 +648,58 @@
             `;
             list.appendChild(div);
         });
+    }
+
+    // --- FONCTIONS DE TRI ---
+    function sortLocations(critere, ordre, btn) {
+        // Réinitialiser l'opacité de tous les boutons
+        document.querySelectorAll('.btn-sort').forEach(b => {
+            b.style.opacity = '0.7';
+        });
+        
+        // Mettre en évidence le bouton actif
+        btn.style.opacity = '1';
+        
+        let sortedLocations = [...savedLocations];
+        
+        sortedLocations.sort((a, b) => {
+            let valeurA, valeurB;
+            
+            switch(critere) {
+                case 'titre':
+                    valeurA = a.titre || '';
+                    valeurB = b.titre || '';
+                    break;
+                case 'layer':
+                    const layerA = layers.find(l => l.id === a.layerId);
+                    const layerB = layers.find(l => l.id === b.layerId);
+                    valeurA = layerA ? layerA.name : '';
+                    valeurB = layerB ? layerB.name : '';
+                    break;
+                case 'categorie':
+                    valeurA = a.categorie || '';
+                    valeurB = b.categorie || '';
+                    break;
+                default:
+                    return 0;
+            }
+            
+            valeurA = String(valeurA).toLowerCase();
+            valeurB = String(valeurB).toLowerCase();
+            
+            if (ordre === 'asc') {
+                if (valeurA < valeurB) return -1;
+                if (valeurA > valeurB) return 1;
+                return 0;
+            } else {
+                if (valeurA > valeurB) return -1;
+                if (valeurA < valeurB) return 1;
+                return 0;
+            }
+        });
+        
+        savedLocations = sortedLocations;
+        refreshUI();
     }
 
     // --- MODALE ÉDITION POINT ---
@@ -601,7 +715,6 @@
         document.getElementById('edit-icon-type').value = loc.iconType || 'circle';
         document.getElementById('edit-popup-always').checked = loc.popupAlwaysOn || false;
 
-        // Remplir les catégories
         const catSelect = document.getElementById('edit-categorie');
         catSelect.innerHTML = '';
         Object.keys(categories).forEach(cat => {
@@ -612,7 +725,6 @@
             catSelect.appendChild(opt);
         });
 
-        // Remplir les couches
         const layerSelect = document.getElementById('edit-layer');
         layerSelect.innerHTML = '';
         layers.forEach(layer => {
@@ -673,9 +785,14 @@
             const item = document.createElement('div');
             item.className = 'category-item';
             item.style.backgroundColor = categories[cat];
+            
             const nameSpan = document.createElement('span');
             nameSpan.textContent = cat;
             nameSpan.style.flex = '1';
+            
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'action-buttons';
+            
             const editBtn = document.createElement('button');
             editBtn.className = 'cat-edit-btn';
             editBtn.innerHTML = '✏️';
@@ -683,10 +800,32 @@
                 e.stopPropagation();
                 openEditCategoryModal(cat);
             };
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'cat-delete-btn';
+            deleteBtn.innerHTML = '🗑️';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (cat === "Par défaut") {
+                    alert("Impossible de supprimer la catégorie par défaut.");
+                    return;
+                }
+                if (confirm(`Supprimer la catégorie "${cat}" ? Les points concernés passeront en "Par défaut".`)) {
+                    delete categories[cat];
+                    savedLocations.forEach(loc => { if (loc.categorie === cat) loc.categorie = "Par défaut"; });
+                    refreshCategoryList();
+                    refreshUI();
+                }
+            };
+            
+            actionsDiv.appendChild(editBtn);
+            actionsDiv.appendChild(deleteBtn);
+            
             item.appendChild(nameSpan);
-            item.appendChild(editBtn);
+            item.appendChild(actionsDiv);
+            
             item.onclick = (e) => {
-                if (e.target !== editBtn) {
+                if (e.target !== editBtn && e.target !== deleteBtn) {
                     document.querySelectorAll('.category-item').forEach(el => el.classList.remove('selected'));
                     item.classList.add('selected');
                     selectedCategoryForPoint = cat;
@@ -759,6 +898,13 @@
 
     // --- GESTION DES COUCHES ---
     function openLayersModal() {
+        document.getElementById('layer-point-id').value = '';
+        refreshLayerList();
+        document.getElementById('layersModal').style.display = 'flex';
+    }
+
+    function openLayersModalForPoint(id) {
+        document.getElementById('layer-point-id').value = id;
         refreshLayerList();
         document.getElementById('layersModal').style.display = 'flex';
     }
@@ -770,6 +916,8 @@
     function refreshLayerList() {
         const listDiv = document.getElementById('layer-list');
         listDiv.innerHTML = '';
+        selectedLayerForPoint = null;
+        
         layers.forEach(layer => {
             const item = document.createElement('div');
             item.className = 'layer-item';
@@ -790,6 +938,9 @@
             nameSpan.style.flex = '1';
             nameSpan.style.marginLeft = '5px';
             
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'action-buttons';
+            
             const editBtn = document.createElement('button');
             editBtn.className = 'layer-edit-btn';
             editBtn.innerHTML = '✏️';
@@ -799,20 +950,30 @@
             };
             
             const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'layer-edit-btn';
+            deleteBtn.className = 'layer-delete-btn';
             deleteBtn.innerHTML = '🗑️';
-            deleteBtn.style.marginLeft = '5px';
             deleteBtn.onclick = (e) => {
                 e.stopPropagation();
                 deleteLayer(layer.id);
             };
             
+            actionsDiv.appendChild(editBtn);
+            if (layer.id !== 'default') {
+                actionsDiv.appendChild(deleteBtn);
+            }
+            
             item.appendChild(checkbox);
             item.appendChild(nameSpan);
-            item.appendChild(editBtn);
-            if (layer.id !== 'default') {
-                item.appendChild(deleteBtn);
-            }
+            item.appendChild(actionsDiv);
+            
+            item.onclick = (e) => {
+                if (e.target !== checkbox && e.target !== editBtn && e.target !== deleteBtn) {
+                    document.querySelectorAll('.layer-item').forEach(el => el.classList.remove('selected'));
+                    item.classList.add('selected');
+                    selectedLayerForPoint = layer.id;
+                }
+            };
+            
             listDiv.appendChild(item);
         });
     }
@@ -845,7 +1006,6 @@
             alert("Une autre couche porte déjà ce nom.");
             return;
         }
-        // Création d'un input color temporaire
         const colorInput = document.createElement('input');
         colorInput.type = 'color';
         colorInput.value = layer.color;
@@ -863,11 +1023,10 @@
         });
 
         colorInput.addEventListener('blur', function() {
-            // Si l'utilisateur ferme le sélecteur sans choisir, on ne fait rien
             document.body.removeChild(colorInput);
         });
 
-        colorInput.click(); // Ouvre le sélecteur de couleur
+        colorInput.click();
     }
 
     function deleteLayer(layerId) {
@@ -882,6 +1041,24 @@
         layers = layers.filter(l => l.id !== layerId);
         refreshLayerList();
         refreshUI();
+    }
+
+    function applySelectedLayer() {
+        if (!selectedLayerForPoint) {
+            alert("Sélectionnez une couche.");
+            return;
+        }
+        const id = Number(document.getElementById('layer-point-id').value);
+        if (!id) {
+            alert("Aucun point sélectionné pour appliquer la couche.");
+            return;
+        }
+        const loc = savedLocations.find(l => l.id === id);
+        if (loc) {
+            loc.layerId = selectedLayerForPoint;
+            refreshUI();
+        }
+        closeLayersModal();
     }
 
     // --- CERCLES ---
@@ -1377,7 +1554,6 @@ function openRouteModal() {
     endSelect.innerHTML = '';
 
     savedLocations.forEach(loc => {
-        // Construction de l'adresse lisible en convertissant chaque champ en chaîne
         const adresseParts = [
             loc.numero,
             loc.rue,
@@ -1385,7 +1561,7 @@ function openRouteModal() {
             loc.ville
         ].filter(part => {
             if (part === undefined || part === null) return false;
-            const str = String(part).trim();   // ← conversion explicite en chaîne
+            const str = String(part).trim();
             return str !== '' && str !== 'N/A';
         });
         const adresse = adresseParts.length > 0 ? adresseParts.join(' ') : 'Adresse inconnue';
@@ -1465,25 +1641,20 @@ function openRouteModal() {
             const data = await response.json();
             if (data.features && data.features.length > 0) {
                 const feature = data.features[0];
-                const coords = feature.geometry.coordinates.map(c => [c[1], c[0]]); // [lat, lon]
-                const distance = feature.properties.summary.distance; // en mètres
-                const duration = feature.properties.summary.duration; // en secondes
+                const coords = feature.geometry.coordinates.map(c => [c[1], c[0]]);
+                const distance = feature.properties.summary.distance;
+                const duration = feature.properties.summary.duration;
 
-                // Effacer l'ancienne route
                 routeLayer.clearLayers();
 
-                // Tracer la ligne
                 const polyline = L.polyline(coords, { color: 'blue', weight: 5 }).addTo(routeLayer);
-                // Ajouter des marqueurs de début et fin
                 L.marker([startLoc.lat, startLoc.lon]).addTo(routeLayer).bindPopup(`Départ: ${startLoc.titre}`);
                 L.marker([endLoc.lat, endLoc.lon]).addTo(routeLayer).bindPopup(`Arrivée: ${endLoc.titre}`);
 
-                // Afficher les infos dans un popup
                 const distanceKm = (distance / 1000).toFixed(2);
                 const durationMin = (duration / 60).toFixed(1);
                 polyline.bindPopup(`Distance: ${distanceKm} km<br>Durée: ${durationMin} min`).openPopup();
 
-                // Ajuster la vue
                 map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
 
                 closeRouteModal();
