@@ -36,7 +36,17 @@
         #historyList {
             border-right: 1px solid #eee;
         }
-        .location-item { padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: flex-start; }
+		.location-item {
+			padding: 15px;
+			border-bottom: 1px solid #eee;
+			display: flex;
+			justify-content: space-between;
+			align-items: flex-start;
+			border-radius: 10px;  
+		}
+		
+		.location-item:hover { background: #D9E4FC; }
+		
         .item-content { flex: 1; cursor: pointer; }
         .title-text { font-weight: bold; color: var(--primary); font-size: 0.9rem; }
         .cat-tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; color: white; margin-top: 5px; font-weight: bold; cursor: pointer; }
@@ -119,16 +129,24 @@
         label.btn { cursor: pointer; }
         .custom-svg-marker { background: none; border: none; }
         .layer-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 5px; }
-        .map-copyright {
-            background: rgba(255,255,255,0.8);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            color: #333;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            pointer-events: none;
-        }
-        .action-buttons { display: flex; gap: 2px; }
+		.map-copyright {
+			background: rgba(255,255,255,0.8);
+			padding: 4px 12px;
+			border-radius: 4px;
+			font-size: 0.8rem;
+			color: #333;
+			box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+			pointer-events: none;
+			
+			/* Nouvelles propriétés pour le centrage */
+			position: absolute;
+			bottom: 10px;        /* Distance par rapport au bas de la carte */
+			left: 50%;           /* Positionne le bord gauche au milieu */
+			transform: translateX(-50%); /* Décale de la moitié de sa propre largeur vers la gauche */
+			z-index: 1000;       /* S'assure qu'il passe au-dessus des autres couches */
+			white-space: nowrap; /* Évite que le texte ne revienne à la ligne */
+		}
+				.action-buttons { display: flex; gap: 2px; }
         .commune-item {
             padding: 10px;
             border-bottom: 1px solid #eee;
@@ -137,9 +155,10 @@
             align-items: center;
             background: #fdfdfd;
             font-size: 0.9rem;
+			border-radius: 10px;
         }
 
-        .commune-item:hover { background: #f0f7ff; }
+        .commune-item:hover { background: #D9E4FC; }
 
         .commune-info { flex: 1; cursor: pointer; }
 
@@ -207,6 +226,33 @@
         .btn-dept:hover {
             opacity: 0.9;
         }
+		/* Style pour le conteneur du bouton département */
+.btn-dept-container {
+    position: relative;
+    display: inline-block;
+}
+
+/* On ajuste le bouton pour laisser de la place à la poubelle */
+.btn-dept {
+    padding-right: 30px !important; 
+}
+
+/* Style de l'icône poubelle */
+.btn-dept-remove {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    font-weight: bold;
+    padding: 2px 5px;
+    transition: color 0.2s;
+}
+
+.btn-dept-remove:hover {
+    color: #ff4d4d;
+}
     </style>
 </head>
 <body>
@@ -217,10 +263,10 @@
         <span class="edit-icon" title="Modifier le titre" onclick="document.getElementById('map-title').focus()">✏️</span>
     </div>
     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-        <label class="btn btn-import" for="importExcel" style="padding: 8px 15px;">📥 Récupérer Excel</label>
+        <label class="btn btn-import" for="importExcel" style="padding: 8px 15px;">📥 Ouvrir</label>
         <input type="file" id="importExcel" accept=".xlsx, .xls" onchange="importFromExcel(event)" style="display: none;">
 
-        <button class="btn btn-export" onclick="exportToExcel()" style="padding: 8px 15px;">💾 Enregistrer Excel</button>
+        <button class="btn btn-export" onclick="exportToExcel()" style="padding: 8px 15px;">💾 Enregistrer</button>
         <button class="btn btn-kml" onclick="exportToKML()" style="padding: 8px 15px;">🗺️ Exporter KML</button>
 		<button class="btn btn-kml" onclick="importFromKML()" style="padding: 8px 15px; background: #8e44ad;">📂 Récupérer KML</button>
 		<input type="file" id="importKML" accept=".kml,.kmz" onchange="handleKMLImport(event)" style="display: none;">
@@ -281,7 +327,9 @@
             <div id="historyList"></div>
         </div>
 <div style="display: flex; flex-direction: column; flex: 0.8;">
-    <div class="column-header">Département(s)/Commune(s)</div>
+    <div class="column-header">
+        <span id="dept-count">0</span> Départ. / <span id="commune-count">0</span> Commune(s)
+	</div>
        
     <div class="dept-search-container">
         <div class="dept-search-form">
@@ -542,18 +590,49 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     // Initialisation de la carte
-    const map = L.map('map').setView([46.6, 2.2], 5);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    L.control.scale({ imperial: false, metric: true }).addTo(map);
+    <!-- const map = L.map('map').setView([46.6, 2.2], 5); -->
+    <!-- L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map); -->
+    <!-- L.control.scale({ imperial: false, metric: true }).addTo(map); -->
+	// Définition des différents fonds de carte
+// 1. Définition des fonds de carte
+const baseMaps = {
+    "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }),
+    "Routes (Esri)": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles © Esri'
+    }),
+    "Satellite (Esri)": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles © Esri'
+    }),
+    "Hybride (Esri)": L.layerGroup([
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'),
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}')
+    ]),
+    "National Geographic": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles © Esri & National Geographic',
+        maxZoom: 16
+    })
+};
 
-    // Ajout du copyright dans la carte
-    const copyrightControl = L.control({ position: 'bottomright' });
-    copyrightControl.onAdd = function(map) {
-        const div = L.DomUtil.create('div', 'map-copyright');
-        div.innerHTML = '©️ 05/03/2026 J-F D Lycée Agricole du Bourbonnais';
-        return div;
-    };
-    copyrightControl.addTo(map);
+// Initialisation de la carte et des fonds de carte
+const map = L.map('map', {
+    center: [46.6, 2.2],
+    zoom: 5,
+	zoomSnap: 0.5,    // Autorise des niveaux de zoom demi-entiers
+    zoomDelta: 0.5,   // Pas de 0.5 pour les boutons +/-
+    layers: [baseMaps["OpenStreetMap"]] // Assurez-vous que baseMaps est défini avant
+});
+
+// Ajout de l'échelle (en bas à gauche)
+L.control.scale({ imperial: false, metric: true }).addTo(map);
+
+L.control.layers(baseMaps).addTo(map);
+
+// NOUVEAU COPYRIGHT CENTRÉ 
+const copyrightDiv = L.DomUtil.create('div', 'map-copyright', document.getElementById('map'));
+copyrightDiv.innerHTML = '©️ 06/03/2026 J-F D Lycée Agricole du Bourbonnais';
+
 
     // Variables globales
     let savedLocations = [];
@@ -583,6 +662,8 @@
     let activeDeptLayers = {}; // Stocke les couches GeoJSON par code département
     let selectedCommunes = []; // Stocke les communes sélectionnées
 
+	updateCounters();
+
     function generateId() {
         return Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     }
@@ -590,26 +671,43 @@
     // --- FONCTIONS POUR LES COMMUNES ---
 
 function addCommuneToList(props, layerInstance) {
-    // 1. On récupère le code de la commune (l'API utilise 'code')
     const codeCom = props.code;
 
-    // 2. On vérifie si elle est déjà dans la liste pour éviter les doublons
+    // Vérifier si la commune est déjà sélectionnée
     if (selectedCommunes.find(c => c.code === codeCom)) return;
 
-    // 3. On prépare l'objet commune de façon sécurisée
+    // CRÉATION D'UNE COUCHE INDÉPENDANTE : On clone la géométrie
+    // Cela permet à la commune de rester visible même si le département est supprimé
+    const independentLayer = L.geoJSON(layerInstance.feature, {
+        style: {
+            fillColor: "#27ae60",
+            fillOpacity: 0.3,
+            color: "#27ae60",
+            weight: 1
+        }
+    }).addTo(map);
+
     const newCommune = {
         ...props,
-        // On gère le cas où departement est un objet ou une chaîne
         departement: typeof props.departement === 'object' ? props.departement.nom : props.departement,
         layerId: 'com-default',
-        _mapLayer: layerInstance
+        _mapLayer: independentLayer // On stocke la nouvelle couche autonome
     };
 
     selectedCommunes.push(newCommune);
-    updateCommunesUI(); // Met à jour l'affichage de la liste à gauche
+    updateCommunesUI();
 }
 
-    function updateCommunesUI() {
+// Fonction pour zoomer sur une commune
+function focusCommune(index) {
+    const com = selectedCommunes[index];
+    if (com && com._mapLayer) {
+        map.fitBounds(com._mapLayer.getBounds());
+    }
+}
+
+// Mise à jour de l'UI des communes
+function updateCommunesUI() {
     const list = document.getElementById('selectedCommunesList');
     list.innerHTML = "";
 
@@ -633,10 +731,18 @@ function addCommuneToList(props, layerInstance) {
         const div = document.createElement('div');
         div.className = "commune-item";
         div.style.borderLeft = `5px solid ${layer.color}`;
+        
+        // Gestion du clic sur l'élément (sauf si on clique sur le bouton)
+        div.onclick = (e) => {
+            if (e.target.tagName !== 'BUTTON') {
+                focusCommune(index);
+            }
+        };
+        
         div.innerHTML = `
             <div class="commune-info">
                 <strong>🏘️ ${com.nom}</strong><br>
-                <small style="color:#666;">🗺️ ${com.departement || 'Département inconnu'}</small><br>  <!-- <--- AJOUTER CETTE LIGNE -->
+                <small style="color:#666;">🗺️ ${com.departement || 'Département inconnu'}</small><br>
                 <small>👥 ${com.population ? com.population.toLocaleString() : 'N/C'} hab.</small>
                 <div style="margin-top:5px;">
                     <span class="cat-tag" style="background:${layer.color};" 
@@ -649,16 +755,17 @@ function addCommuneToList(props, layerInstance) {
         `;
         list.appendChild(div);
     });
+	updateCounters();
 }
 
-    function removeCommune(index) {
-        const com = selectedCommunes[index];
-        if (com._mapLayer) {
-            com._mapLayer.setStyle({ fillOpacity: 0.1, weight: 1 }); 
-        }
-        selectedCommunes.splice(index, 1);
-        updateCommunesUI();
+function removeCommune(index) {
+    const com = selectedCommunes[index];
+    if (com._mapLayer) {
+        map.removeLayer(com._mapLayer); // Supprime physiquement la forme verte de la carte
     }
+    selectedCommunes.splice(index, 1);
+    updateCommunesUI();
+}
 
     function openLayersModalForCommune(index) {
         currentEditingCommuneIndex = index;
@@ -1028,6 +1135,7 @@ function addCommuneToList(props, layerInstance) {
 
             const div = document.createElement('div');
             div.className = "location-item";
+			div.style.borderLeft = `5px solid ${categories[loc.categorie] || '#ccc'}`;
             div.innerHTML = `
                 <div class="item-content" onclick="focusPoint(${loc.id})">
                     <span class="title-text">📝 ${loc.titre}</span><br>
@@ -1697,50 +1805,24 @@ if (workbook.SheetNames.includes("Communes")) {
     const worksheetCommunes = workbook.Sheets["Communes"];
     const jsonCommunes = XLSX.utils.sheet_to_json(worksheetCommunes);
 
-    // On réinitialise la liste des communes
+    // Nettoyer les anciennes communes
     selectedCommunes.forEach(c => {
         if (c._mapLayer) map.removeLayer(c._mapLayer);
     });
     selectedCommunes = [];
 
-    // Collecter les départements uniques pour recréer les boutons
-    const deptsMap = new Map(); // code -> nom
+    // Collecter les départements uniques (code -> nom)
+    const deptsMap = new Map();
 
-    // Pour chaque commune, on charge le contour depuis l'API Géo
     for (const row of jsonCommunes) {
         const code = row["Code INSEE"];
         const nom = row["Nom"];
-        const departement = row["Département"];  // Récupérer le département
         const population = row["Population"];
         const layerName = row["Couche"];
         const layerColor = row["Couleur couche"];
 
         if (!code || !nom) continue;
 
-        // Stocker le département pour créer le bouton plus tard
-        if (departement) {
-            // Extraire le code du département depuis le code INSEE (2 premiers chiffres)
-            const deptCode = code.substring(0, 2);
-            deptsMap.set(deptCode, departement);
-        }
-
-        // Trouver ou créer la couche communale
-        let layerId = 'com-default';
-        if (layerName) {
-            let existingLayer = communeLayers.find(l => l.name === layerName);
-            if (!existingLayer) {
-                existingLayer = {
-                    id: 'com-' + Date.now() + Math.random(),
-                    name: layerName,
-                    color: layerColor || '#27ae60',
-                    visible: true
-                };
-                communeLayers.push(existingLayer);
-            }
-            layerId = existingLayer.id;
-        }
-
-        // Charger le contour de la commune
         try {
             const response = await fetch(`https://geo.api.gouv.fr/communes/${code}?fields=nom,code,contour,departement`);
             if (!response.ok) throw new Error(`Commune ${code} non trouvée`);
@@ -1748,7 +1830,30 @@ if (workbook.SheetNames.includes("Communes")) {
             const geojson = data.contour;
             if (!geojson) continue;
 
-            // Créer le layer avec le style de la couche
+            // Récupérer les infos département depuis l'API
+            const deptCode = data.departement ? data.departement.code : null;
+            const deptNom = data.departement ? data.departement.nom : (row["Département"] || "");
+
+            if (deptCode) {
+                deptsMap.set(deptCode, deptNom);
+            }
+
+            // Créer la couche avec la couleur appropriée
+            let layerId = 'com-default';
+            if (layerName) {
+                let existingLayer = communeLayers.find(l => l.name === layerName);
+                if (!existingLayer) {
+                    existingLayer = {
+                        id: 'com-' + Date.now() + Math.random(),
+                        name: layerName,
+                        color: layerColor || '#27ae60',
+                        visible: true
+                    };
+                    communeLayers.push(existingLayer);
+                }
+                layerId = existingLayer.id;
+            }
+
             const layerColorCode = (communeLayers.find(l => l.id === layerId) || communeLayers[0]).color;
             const layer = L.geoJSON(geojson, {
                 style: {
@@ -1762,7 +1867,7 @@ if (workbook.SheetNames.includes("Communes")) {
             const newCommune = {
                 code: code,
                 nom: nom,
-                departement: data.departement ? data.departement.nom : departement || "",
+                departement: deptNom,
                 population: population,
                 layerId: layerId,
                 _mapLayer: layer
@@ -1770,26 +1875,23 @@ if (workbook.SheetNames.includes("Communes")) {
             selectedCommunes.push(newCommune);
         } catch (err) {
             console.error("Erreur chargement commune", code, err);
+            // Ajouter quand même sans géométrie
             selectedCommunes.push({
                 code: code,
                 nom: nom,
-                departement: departement || "",
+                departement: row["Département"] || "",
                 population: population,
-                layerId: layerId
+                layerId: 'com-default'
             });
         }
     }
 
-    // --- AJOUT : Créer les boutons de département ---
-    // Vider le conteneur des boutons existants
+    // Mettre à jour les boutons de départements
     document.getElementById('dept-buttons-container').innerHTML = '';
-    
-    // Recréer les boutons pour chaque département unique
     for (const [deptCode, deptNom] of deptsMap) {
         createDeptButton(deptCode, deptNom);
     }
-
-    // Mise à jour de l'UI
+	updateCounters();
     updateCommunesUI();
 }
 
@@ -2091,14 +2193,20 @@ if (workbook.SheetNames.includes("Communes")) {
     }
 
     // --- GESTION DÉPARTEMENTS (recherche) ---
-    async function searchDepartment() {
-        const code = document.getElementById('deptInput').value.trim();
-        if (!code) return;
+async function searchDepartment() {
+    const code = document.getElementById('deptInput').value.trim();
+    if (!code) return;
 
-        if (document.getElementById(`btn-dept-${code}`)) {
-            alert("Ce département est déjà dans la liste.");
-            return;
-        }
+    // Si le département est déjà affiché, on le retire SIMPLEMENT
+    if (activeDeptLayers[code]) {
+        map.removeLayer(activeDeptLayers[code]);
+        delete activeDeptLayers[code];
+        
+        // On retire l'état visuel du bouton
+        const btn = document.querySelector(`.btn-dept[onclick*="'${code}'"]`);
+        if (btn) btn.classList.remove('active');
+        return; // On s'arrête là : les communes dans selectedCommunes restent sur la carte
+    }
 
         try {
             const response = await fetch(`https://geo.api.gouv.fr/departements/${code}?fields=nom,code`);
@@ -2112,34 +2220,52 @@ if (workbook.SheetNames.includes("Communes")) {
         }
     }
 
-    function createDeptButton(code, nom) {
-        const container = document.getElementById('dept-buttons-container');
-        
-        const btn = document.createElement('button');
-        btn.id = `btn-dept-${code}`;
-        btn.className = 'btn-dept';
-        
-        const colorPicker = document.createElement('input');
-        colorPicker.type = 'color';
-        colorPicker.className = 'dept-color-picker';
-        colorPicker.value = '#3498db';
-        colorPicker.title = "Choisir la couleur des limites";
-        
-        colorPicker.onclick = (e) => e.stopPropagation();
-        colorPicker.onchange = () => {
-            if (activeDeptLayers[code]) {
-                activeDeptLayers[code].setStyle({ color: colorPicker.value });
-            }
-        };
+function createDeptButton(code, nom) {
+    const container = document.getElementById('dept-buttons-container');
+    
+    // Créer le conteneur principal
+    const wrapper = document.createElement('div');
+    wrapper.className = 'btn-dept-container';
+    wrapper.setAttribute('data-dept', code);
+    
+    // Créer le bouton
+    const btn = document.createElement('button');
+    btn.id = `btn-dept-${code}`;
+    btn.className = 'btn-dept';
+    
+    // Sélecteur de couleur
+    const colorPicker = document.createElement('input');
+    colorPicker.type = 'color';
+    colorPicker.className = 'dept-color-picker';
+    colorPicker.value = '#3498db';
+    colorPicker.title = "Choisir la couleur des limites";
+    colorPicker.onclick = (e) => e.stopPropagation();
+    colorPicker.onchange = () => {
+        if (activeDeptLayers[code]) {
+            // Mettre à jour la couleur de la couche existante
+            activeDeptLayers[code].setStyle({ color: colorPicker.value, fillColor: colorPicker.value });
+        }
+    };
 
-        const textSpan = document.createElement('span');
-        textSpan.innerText = `${code} - ${nom}`;
-        textSpan.onclick = () => toggleDeptBoundaries(code, btn, colorPicker.value);
+    // Texte du département
+    const textSpan = document.createElement('span');
+    textSpan.innerText = `${code} - ${nom}`;
+    textSpan.onclick = () => toggleDeptBoundaries(code, btn, colorPicker.value);
 
-        btn.appendChild(colorPicker);
-        btn.appendChild(textSpan);
-        container.appendChild(btn);
-    }
+    btn.appendChild(colorPicker);
+    btn.appendChild(textSpan);
+    
+    // Bouton poubelle
+    const removeSpan = document.createElement('span');
+    removeSpan.className = 'btn-dept-remove';
+    removeSpan.innerHTML = ' 🗑️';
+    removeSpan.onclick = (e) => removeDeptButton(code, e);
+    
+    wrapper.appendChild(btn);
+    wrapper.appendChild(removeSpan);
+    container.appendChild(wrapper);
+	updateCounters();
+}
 
 async function toggleDeptBoundaries(code, btn, selectedColor) {
     if (activeDeptLayers[code]) {
@@ -2194,6 +2320,25 @@ onEachFeature: (feature, layer) => {
         }
     }
 }
+
+function removeDeptButton(code, event) {
+    // On empêche le clic de déclencher aussi la recherche du département
+    event.stopPropagation();
+
+    // 1. Supprimer la couche de la carte si elle est affichée
+    if (activeDeptLayers[code]) {
+        map.removeLayer(activeDeptLayers[code]);
+        delete activeDeptLayers[code];
+    }
+
+    // 2. Supprimer le bouton de l'interface
+    const wrapper = document.querySelector(`.btn-dept-container[data-dept="${code}"]`);
+    if (wrapper) {
+        wrapper.remove();
+		updateCounters();
+    }
+}
+
 
 // --- IMPORT KML ---
 function importFromKML() {
@@ -2396,6 +2541,14 @@ function getExtendedDataValue(extendedData, name) {
     const data = extendedData.querySelector(`Data[name="${name}"] value`);
     return data ? data.textContent.trim() : null;
 }
+
+function updateCounters() {
+    const deptCount = document.querySelectorAll('.btn-dept-container').length;
+    const communeCount = selectedCommunes.length;
+    document.getElementById('dept-count').textContent = deptCount;
+    document.getElementById('commune-count').textContent = communeCount;
+}
+
 </script>
 </body>
 </html>
