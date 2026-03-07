@@ -253,6 +253,8 @@
 .btn-dept-remove:hover {
     color: #ff4d4d;
 }
+
+
     </style>
 </head>
 <body>
@@ -270,6 +272,7 @@
         <button class="btn btn-kml" onclick="exportToKML()" style="padding: 8px 15px;">🗺️ Exporter KML</button>
 		<button class="btn btn-kml" onclick="importFromKML()" style="padding: 8px 15px; background: #8e44ad;">📂 Récupérer KML</button>
 		<input type="file" id="importKML" accept=".kml,.kmz" onchange="handleKMLImport(event)" style="display: none;">
+		<button class="btn" onclick="openHelpInNewWindow()" style="background: #2c3e50; color: white; padding: 8px 15px;">❓ Aide</button>
 
     </div>
 </header>
@@ -299,13 +302,15 @@
     <div class="columns-container">
 
         <div style="display: flex; flex-direction: column; flex: 1.2; border-right: 1px solid #ddd;">
-            <div class="column-header"><strong id="count-label">0 Pts</strong><br>
-                <button class="btn btn-couche" onclick="openLayersModal('points')" style="padding: 5px 10px; font-size:0.9rem;">🗂️ Couches</button>
-                <button class="btn" onclick="openRouteModal()" style="background: purple; color: white; padding: 5px 10px; font-size:0.9rem;">🗺️ Itinéraire</button>
-            </div>
+            <div class="column-header"><strong id="count-label">0 Pts</strong>  <br>       
+					<button class="btn btn-couche" onclick="openLayersModal('points')" style="padding: 5px 10px; font-size:0.9rem;">🗂️ Couches</button>
+					<button class="btn" onclick="openRouteModal()" style="background: purple; color: white; padding: 5px 10px; font-size:0.9rem;">🗺️ Itinéraire</button></br>
+				</div>
+
             <!-- Boutons de tri -->
             <div style="display: flex; gap: 3px; margin-top: 5px; flex-wrap: wrap;">
-                <button class="btn-sort" onclick="sortLocations('titre', 'asc', this)" style="background:#34495e; color:white;" title="Trier par titre (A à Z)">
+
+			   <button class="btn-sort" onclick="sortLocations('titre', 'asc', this)" style="background:#34495e; color:white;" title="Trier par titre (A à Z)">
                     <span>📝<br>▲</span>
                 </button>
                 <button class="btn-sort" onclick="sortLocations('titre', 'desc', this)" style="background:#34495e; color:white;" title="Trier par titre (Z à A)">
@@ -329,12 +334,10 @@
 <div style="display: flex; flex-direction: column; flex: 0.8;">
     <div class="column-header">
         <span id="dept-count">0</span> Départ. / <span id="commune-count">0</span> Commune(s)
-	</div>
-       
-    <div class="dept-search-container">
+
         <div class="dept-search-form">
             <input type="text" id="deptInput" placeholder="Code département (ex: 03, 63...)">
-            <button class="btn btn-save" onclick="searchDepartment()" style="padding: 5px 5px;">🔍</button>
+            <button class="btn btn-save" onclick="searchDepartment()" style="padding: 2px 2px;">🔍</button>
         </div>
         <div id="dept-buttons-container"></div>
     </div>  
@@ -403,8 +406,33 @@
                 <option value="triangle">🔺 Triangle</option>
                 <option value="diamond">🔶 Losange</option>
                 <option value="star">⭐ Étoile</option>
+				<option value="star">⭐ Étoile</option>
+				<option value="emoji">😊 Emoji (personnalisable)</option>
             </select>
         </div>
+		<div class="form-group" id="emoji-selector-group" style="display: none;">
+			<label>Choisissez un emoji</label>
+			<select id="edit-emoji">
+				<option value="😊">😊 Souriant</option>
+				<option value="🏠">🏠 Maison</option>
+				<option value="🏫">🏫 École</option>
+				<option value="🏛️">🏛️ Institution</option>		
+				<option value="🤝">🤝 Services</option>
+				<option value="👔">👔 Travail</option>
+				<option value="🛒">🛒 Commerce</option>
+				<option value="💰">💰 Argent</option>
+				<option value="💊">💊 Santé</option>
+				<option value="☕">☕ Restaurant/Café</option>
+				<option value="⚽">⚽ Sport</option>
+				<option value="⛪">⛪ Culte</option>
+				<option value="🏞️">🏞️ Parc</option>
+				<option value="🚉">🚉 Gare</option>
+				<option value="🚌">🚌 Bus</option>
+				<option value="🅿️">🅿️ Parking</option>
+				<option value="⛽">⛽ Station-service</option>
+				<option value="✈️">✈️ Aéroport</option>
+			</select>
+		</div>
         <!-- Sélection de la catégorie -->
         <div class="form-group">
             <label>Catégorie (couleur du point)</label>
@@ -631,14 +659,27 @@ L.control.layers(baseMaps).addTo(map);
 
 // NOUVEAU COPYRIGHT CENTRÉ 
 const copyrightDiv = L.DomUtil.create('div', 'map-copyright', document.getElementById('map'));
-copyrightDiv.innerHTML = '©️ 06/03/2026 J-F D Lycée Agricole du Bourbonnais';
+copyrightDiv.innerHTML = '©️ 07/03/2026 J-F D Lycée Agricole du Bourbonnais';
 
 
     // Variables globales
     let savedLocations = [];
     let markersLayer = L.layerGroup().addTo(map);
     let categories = { "Par défaut": "#e74c3c" };
-    
+ 
+// Fonction pour s'assurer que les marqueurs sont au premier plan
+// Fonction pour s'assurer que les marqueurs sont au premier plan
+function ensureMarkersOnTop() {
+    // Réajouter markersLayer pour qu'il soit au-dessus de tous les autres calques
+    if (map.hasLayer(markersLayer)) {
+        markersLayer.eachLayer(function(layer) {
+            if (layer.bringToFront) {
+                layer.bringToFront();
+            }
+        });
+    }
+}
+ 
     // Gestion des couches pour les points
     let layers = [
         { id: 'default', name: 'Par défaut', color: '#808080', visible: true }
@@ -668,34 +709,60 @@ copyrightDiv.innerHTML = '©️ 06/03/2026 J-F D Lycée Agricole du Bourbonnais'
         return Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     }
 
-    // --- FONCTIONS POUR LES COMMUNES ---
-
 function addCommuneToList(props, layerInstance) {
     const codeCom = props.code;
 
-    // Vérifier si la commune est déjà sélectionnée
-    if (selectedCommunes.find(c => c.code === codeCom)) return;
+    // --- SI LA COMMUNE EXISTE DÉJÀ → ON LA REMONTE ---
+    const existingIndex = selectedCommunes.findIndex(c => c.code === codeCom);
+    if (existingIndex !== -1) {
+        const existingCommune = selectedCommunes.splice(existingIndex, 1)[0];
+        selectedCommunes.unshift(existingCommune);
+        updateCommunesUI();
+        focusCommune(0);
+        return;
+    }
 
-    // CRÉATION D'UNE COUCHE INDÉPENDANTE : On clone la géométrie
-    // Cela permet à la commune de rester visible même si le département est supprimé
+    // --- CRÉATION D'UNE COUCHE INDÉPENDANTE (INTERACTIVE POUR LES CLICS) ---
     const independentLayer = L.geoJSON(layerInstance.feature, {
         style: {
             fillColor: "#27ae60",
             fillOpacity: 0.3,
             color: "#27ae60",
             weight: 1
-        }
+        },
+        interactive: true,  // ← DOIT ÊTRE true pour pouvoir cliquer
+        pane: 'overlayPane'
     }).addTo(map);
+
+    // Gestion du clic sur la commune
+    independentLayer.eachLayer(function(layer) {
+        layer.bindTooltip(props.nom, {
+            sticky: true,
+            direction: 'top',
+            offset: [0, -10]
+        });
+
+        layer.on('click', function(e) {
+            L.DomEvent.stopPropagation(e);
+            // Rappeler la fonction avec les mêmes props pour la remonter
+            addCommuneToList(props, layerInstance);
+        });
+    });
 
     const newCommune = {
         ...props,
-        departement: typeof props.departement === 'object' ? props.departement.nom : props.departement,
+        departement: typeof props.departement === 'object'
+            ? props.departement.nom
+            : props.departement,
         layerId: 'com-default',
-        _mapLayer: independentLayer // On stocke la nouvelle couche autonome
+        _mapLayer: independentLayer
     };
 
-    selectedCommunes.push(newCommune);
+    selectedCommunes.unshift(newCommune);
     updateCommunesUI();
+    
+    // Remettre les marqueurs au premier plan
+    ensureMarkersOnTop();
 }
 
 // Fonction pour zoomer sur une commune
@@ -707,6 +774,7 @@ function focusCommune(index) {
 }
 
 // Mise à jour de l'UI des communes
+// Mise à jour de l'UI des communes
 function updateCommunesUI() {
     const list = document.getElementById('selectedCommunesList');
     list.innerHTML = "";
@@ -714,14 +782,38 @@ function updateCommunesUI() {
     selectedCommunes.forEach((com, index) => {
         const layer = communeLayers.find(l => l.id === com.layerId) || communeLayers[0];
         
+        // Extraire le nom simplifié (enlever " (Défaut)" si présent)
+        let layerDisplayName = layer.name;
+        if (layerDisplayName.includes(' (Défaut)')) {
+            layerDisplayName = layerDisplayName.replace(' (Défaut)', '');
+        }
+        
         if (com._mapLayer) {
             if (layer.visible) {
-                com._mapLayer.addTo(map);
+                // S'assurer que la couche est interactive
+                if (!map.hasLayer(com._mapLayer)) {
+                    com._mapLayer.addTo(map);
+                }
                 com._mapLayer.setStyle({
                     fillColor: layer.color,
                     fillOpacity: 0.3,
                     color: layer.color,
                     weight: 1
+                });
+                
+                // Réattacher les événements de clic (au cas où)
+                com._mapLayer.eachLayer(function(l) {
+                    if (!l._events || !l._events.click) {
+                        l.on('click', function(e) {
+                            L.DomEvent.stopPropagation(e);
+                            addCommuneToList({
+                                code: com.code,
+                                nom: com.nom,
+                                departement: com.departement,
+                                population: com.population
+                            }, l);
+                        });
+                    }
                 });
             } else {
                 map.removeLayer(com._mapLayer);
@@ -744,10 +836,10 @@ function updateCommunesUI() {
                 <strong>🏘️ ${com.nom}</strong><br>
                 <small style="color:#666;">🗺️ ${com.departement || 'Département inconnu'}</small><br>
                 <small>👥 ${com.population ? com.population.toLocaleString() : 'N/C'} hab.</small>
-                <div style="margin-top:5px;">
+                <div>
                     <span class="cat-tag" style="background:${layer.color};" 
                           onclick="event.stopPropagation(); openLayersModalForCommune(${index})">
-                        📁 ${layer.name}
+                        📁 ${layerDisplayName}
                     </span>
                 </div>
             </div>
@@ -755,7 +847,7 @@ function updateCommunesUI() {
         `;
         list.appendChild(div);
     });
-	updateCounters();
+    updateCounters();
 }
 
 function removeCommune(index) {
@@ -1020,104 +1112,135 @@ function removeCommune(index) {
         document.getElementById('lonInput').value = "";
     }
 
-    // --- RENDU D'UN POINT ---
-    function renderPointOnMap(loc) {
-        const layer = layers.find(l => l.id === loc.layerId);
-        if (!layer || !layer.visible) return;
+// --- RENDU D'UN POINT ---
+function renderPointOnMap(loc) {
+    const layer = layers.find(l => l.id === loc.layerId);
+    if (!layer || !layer.visible) return;
 
-        const color = categories[loc.categorie] || "#333";
-        const iconType = loc.iconType || 'circle';
-        let marker;
+    const color = categories[loc.categorie] || "#333";
+    const iconType = loc.iconType || 'circle';
+    let marker;
 
-        const popupContent = `<b>${loc.titre}</b><br>${loc.numero} ${loc.rue}<br>${loc.cp} ${loc.ville}`;
+    const popupContent = `<b>${loc.titre}</b><br>${loc.numero} ${loc.rue}<br>${loc.cp} ${loc.ville}`;
 
-        if (iconType === 'marker') {
-            marker = L.marker([loc.lat, loc.lon], {
-                icon: L.icon({
-                    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-                    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-                    iconSize: [25, 41],
-                    iconAnchor: [12, 41],
-                    popupAnchor: [1, -34],
-                    shadowSize: [41, 41]
-                })
+    // CRÉATION DU MARQUEUR
+    if (iconType === 'marker') {
+        marker = L.marker([loc.lat, loc.lon], {
+            icon: L.icon({
+                iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+                shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            })
+        });
+    } else if (iconType === 'circle') {
+        marker = L.circleMarker([loc.lat, loc.lon], {
+            radius: 10,
+            fillColor: color,
+            color: "#fff",
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.9
+        });
+    } else if (iconType === 'emoji') {
+        // Créer un marqueur avec un emoji
+        const emoji = loc.emoji || '😊';
+        const size = 30;
+        const svgString = `<svg width="${size}" height="${size}" viewBox="0 0 30 30">
+            <circle cx="15" cy="15" r="14" fill="white" stroke="${color}" stroke-width="2"/>
+            <text x="15" y="22" font-size="20" text-anchor="middle" dominant-baseline="middle">${emoji}</text>
+        </svg>`;
+        
+        const divIcon = L.divIcon({
+            html: svgString,
+            className: 'custom-svg-marker',
+            iconSize: [size, size],
+            iconAnchor: [size/2, size/2],
+            popupAnchor: [0, -size/2]
+        });
+        marker = L.marker([loc.lat, loc.lon], { icon: divIcon });
+    } else {
+        let svgString = '';
+        const size = 30;
+        switch (iconType) {
+            case 'square':
+                svgString = `<svg width="${size}" height="${size}" viewBox="0 0 30 30"><rect x="5" y="5" width="20" height="20" fill="${color}" stroke="#fff" stroke-width="2"/></svg>`;
+                break;
+            case 'triangle':
+                svgString = `<svg width="${size}" height="${size}" viewBox="0 0 30 30"><polygon points="15,3 28,25 2,25" fill="${color}" stroke="#fff" stroke-width="2"/></svg>`;
+                break;
+            case 'diamond':
+                svgString = `<svg width="${size}" height="${size}" viewBox="0 0 30 30"><polygon points="15,3 27,15 15,27 3,15" fill="${color}" stroke="#fff" stroke-width="2"/></svg>`;
+                break;
+            case 'star':
+                svgString = `<svg width="${size}" height="${size}" viewBox="0 0 30 30"><path d="M15,3 L18,11 L27,11 L20,17 L23,25 L15,20 L7,25 L10,17 L3,11 L12,11 Z" fill="${color}" stroke="#fff" stroke-width="2"/></svg>`;
+                break;
+            default:
+                marker = L.circleMarker([loc.lat, loc.lon], { radius: 10, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.9 });
+                break;
+        }
+        if (svgString) {
+            const divIcon = L.divIcon({
+                html: svgString,
+                className: 'custom-svg-marker',
+                iconSize: [size, size],
+                iconAnchor: [size/2, size/2],
+                popupAnchor: [0, -size/2]
             });
-        } else if (iconType === 'circle') {
-            marker = L.circleMarker([loc.lat, loc.lon], {
-                radius: 10,
-                fillColor: color,
-                color: "#fff",
-                weight: 2,
-                opacity: 1,
-                fillOpacity: 0.9
-            });
+            marker = L.marker([loc.lat, loc.lon], { icon: divIcon });
+        }
+    }
+
+    // D'abord les cercles et isochrones (en arrière-plan)
+    if (loc.circle) {
+        const circle = L.circle([loc.lat, loc.lon], {
+            radius: loc.circle.radiusKm * 1000,
+            color: loc.circle.color,
+            fillColor: loc.circle.color,
+            fillOpacity: 0.2,
+            weight: 1,
+            interactive: false
+        });
+        markersLayer.addLayer(circle);
+        loc._circleId = markersLayer.getLayerId(circle);
+    }
+
+    if (loc.isochrone && loc.isochrone.geometry) {
+        const coords = loc.isochrone.geometry.map(p => [p[1], p[0]]);
+        const polygon = L.polygon(coords, {
+            color: loc.isochrone.color,
+            weight: 2,
+            fillColor: loc.isochrone.color,
+            fillOpacity: 0.15,
+            interactive: false
+        }).bindPopup(`Isochrone: ${loc.isochrone.duration} min (${loc.isochrone.mode})`);
+        markersLayer.addLayer(polygon);
+        loc._isochroneId = markersLayer.getLayerId(polygon);
+    }
+
+    // Ensuite le marqueur (au premier plan)
+    if (marker) {
+        if (loc.popupAlwaysOn) {
+            marker.bindTooltip(popupContent, { permanent: true, direction: 'top', offset: [0, -20] });
         } else {
-            let svgString = '';
-            const size = 30;
-            switch (iconType) {
-                case 'square':
-                    svgString = `<svg width="${size}" height="${size}" viewBox="0 0 30 30"><rect x="5" y="5" width="20" height="20" fill="${color}" stroke="#fff" stroke-width="2"/></svg>`;
-                    break;
-                case 'triangle':
-                    svgString = `<svg width="${size}" height="${size}" viewBox="0 0 30 30"><polygon points="15,3 28,25 2,25" fill="${color}" stroke="#fff" stroke-width="2"/></svg>`;
-                    break;
-                case 'diamond':
-                    svgString = `<svg width="${size}" height="${size}" viewBox="0 0 30 30"><polygon points="15,3 27,15 15,27 3,15" fill="${color}" stroke="#fff" stroke-width="2"/></svg>`;
-                    break;
-                case 'star':
-                    svgString = `<svg width="${size}" height="${size}" viewBox="0 0 30 30"><path d="M15,3 L18,11 L27,11 L20,17 L23,25 L15,20 L7,25 L10,17 L3,11 L12,11 Z" fill="${color}" stroke="#fff" stroke-width="2"/></svg>`;
-                    break;
-                default:
-                    marker = L.circleMarker([loc.lat, loc.lon], { radius: 10, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.9 });
-                    break;
-            }
-            if (svgString) {
-                const divIcon = L.divIcon({
-                    html: svgString,
-                    className: 'custom-svg-marker',
-                    iconSize: [size, size],
-                    iconAnchor: [size/2, size/2],
-                    popupAnchor: [0, -size/2]
-                });
-                marker = L.marker([loc.lat, loc.lon], { icon: divIcon });
-            }
+            marker.bindPopup(popupContent);
         }
-
-        if (marker) {
-            if (loc.popupAlwaysOn) {
-                marker.bindTooltip(popupContent, { permanent: true, direction: 'top', offset: [0, -20] });
-            } else {
-                marker.bindPopup(popupContent);
-            }
-        }
+        
+        marker.on('click', function() {
+            focusPoint(loc.id);
+        });
 
         markersLayer.addLayer(marker);
         loc._markerId = markersLayer.getLayerId(marker);
-
-        if (loc.circle) {
-            const circle = L.circle([loc.lat, loc.lon], {
-                radius: loc.circle.radiusKm * 1000,
-                color: loc.circle.color,
-                fillColor: loc.circle.color,
-                fillOpacity: 0.2,
-                weight: 1
-            });
-            markersLayer.addLayer(circle);
-            loc._circleId = markersLayer.getLayerId(circle);
-        }
-
-        if (loc.isochrone && loc.isochrone.geometry) {
-            const coords = loc.isochrone.geometry.map(p => [p[1], p[0]]);
-            const polygon = L.polygon(coords, {
-                color: loc.isochrone.color,
-                weight: 2,
-                fillColor: loc.isochrone.color,
-                fillOpacity: 0.15
-            }).bindPopup(`Isochrone: ${loc.isochrone.duration} min (${loc.isochrone.mode})`);
-            markersLayer.addLayer(polygon);
-            loc._isochroneId = markersLayer.getLayerId(polygon);
-        }
+		
+		    // Forcer ce marqueur au premier plan
+    if (marker.bringToFront) {
+        marker.bringToFront();
     }
+    }
+}
 
     // --- SIDEBAR ---
     function updateSidebar() {
@@ -1129,7 +1252,7 @@ function removeCommune(index) {
         document.getElementById('count-label').innerText = `${visibleCount} point${visibleCount > 1 ? 's' : ''} affiché${visibleCount > 1 ? 's' : ''}`;
         list.innerHTML = "";
         
-        savedLocations.slice().reverse().forEach((loc) => {
+        savedLocations.forEach((loc) => {
             const layer = layers.find(l => l.id === loc.layerId);
             if (!layer || !layer.visible) return;
 
@@ -1140,8 +1263,8 @@ function removeCommune(index) {
                 <div class="item-content" onclick="focusPoint(${loc.id})">
                     <span class="title-text">📝 ${loc.titre}</span><br>
                     <small>${loc.numero} ${loc.rue}<br>${loc.cp} ${loc.ville}</small><br>
-                    <span style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
-                        <div style="margin-bottom: 4px;">
+                    <span style="display: flex; align-items: center;  flex-wrap: wrap;">
+                        <div>
                             <span style="font-size:0.8rem; color:#555;">📁Couche :</span>
                             <span class="cat-tag" style="background:${layer.color}; cursor:pointer;" onclick="event.stopPropagation(); openLayersModalForPoint(${loc.id})">${layer.name}</span>
                         </div>
@@ -1269,62 +1392,95 @@ function sortCommunes(critere, ordre, btn) {
 }
 
     // --- MODALE ÉDITION POINT ---
-    function openEditModal(id) {
-        const loc = savedLocations.find(l => l.id === id);
-        if(!loc) return;
-        document.getElementById('edit-id').value = loc.id;
-        document.getElementById('edit-titre').value = loc.titre;
-        document.getElementById('edit-numero').value = loc.numero;
-        document.getElementById('edit-rue').value = loc.rue;
-        document.getElementById('edit-cp').value = loc.cp;
-        document.getElementById('edit-ville').value = loc.ville;
-        document.getElementById('edit-icon-type').value = loc.iconType || 'circle';
-        document.getElementById('edit-popup-always').checked = loc.popupAlwaysOn || false;
-
-        const catSelect = document.getElementById('edit-categorie');
-        catSelect.innerHTML = '';
-        Object.keys(categories).forEach(cat => {
-            const opt = document.createElement('option');
-            opt.value = cat;
-            opt.textContent = cat;
-            if (cat === loc.categorie) opt.selected = true;
-            catSelect.appendChild(opt);
-        });
-
-        const layerSelect = document.getElementById('edit-layer');
-        layerSelect.innerHTML = '';
-        layers.forEach(layer => {
-            const opt = document.createElement('option');
-            opt.value = layer.id;
-            opt.textContent = layer.name;
-            if (layer.id === loc.layerId) opt.selected = true;
-            layerSelect.appendChild(opt);
-        });
-
-        document.getElementById('editModal').style.display = 'flex';
+function openEditModal(id) {
+    const loc = savedLocations.find(l => l.id === id);
+    if(!loc) return;
+    
+    document.getElementById('edit-id').value = loc.id;
+    document.getElementById('edit-titre').value = loc.titre;
+    document.getElementById('edit-numero').value = loc.numero;
+    document.getElementById('edit-rue').value = loc.rue;
+    document.getElementById('edit-cp').value = loc.cp;
+    document.getElementById('edit-ville').value = loc.ville;
+    document.getElementById('edit-icon-type').value = loc.iconType || 'circle';
+    document.getElementById('edit-popup-always').checked = loc.popupAlwaysOn || false;
+    
+    // --- GESTION DE L'AFFICHAGE DE L'EMOJI (ÉTAPE 4) ---
+    const emojiGroup = document.getElementById('emoji-selector-group');
+    const iconTypeSelect = document.getElementById('edit-icon-type');
+    
+    // Fonction pour mettre à jour l'affichage du sélecteur d'emoji
+    function updateEmojiVisibility() {
+        if (iconTypeSelect.value === 'emoji') {
+            emojiGroup.style.display = 'block';
+            // Pré-sélectionner l'emoji sauvegardé s'il existe
+            document.getElementById('edit-emoji').value = loc.emoji || '😊';
+        } else {
+            emojiGroup.style.display = 'none';
+        }
     }
+    
+    // Mettre à jour l'affichage initial
+    updateEmojiVisibility();
+    
+    // Ajouter l'écouteur d'événement pour les changements
+    // On enlève l'ancien écouteur pour éviter les doublons
+    iconTypeSelect.removeEventListener('change', updateEmojiVisibility);
+    iconTypeSelect.addEventListener('change', updateEmojiVisibility);
+    // --- FIN DE LA GESTION DE L'EMOJI ---
+
+    const catSelect = document.getElementById('edit-categorie');
+    catSelect.innerHTML = '';
+    Object.keys(categories).forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        if (cat === loc.categorie) opt.selected = true;
+        catSelect.appendChild(opt);
+    });
+
+    const layerSelect = document.getElementById('edit-layer');
+    layerSelect.innerHTML = '';
+    layers.forEach(layer => {
+        const opt = document.createElement('option');
+        opt.value = layer.id;
+        opt.textContent = layer.name;
+        if (layer.id === loc.layerId) opt.selected = true;
+        layerSelect.appendChild(opt);
+    });
+
+    document.getElementById('editModal').style.display = 'flex';
+}
 
     function closeModal() {
         document.getElementById('editModal').style.display = 'none';
     }
 
-    function saveModalChanges() {
-        const id = Number(document.getElementById('edit-id').value);
-        const loc = savedLocations.find(l => l.id === id);
-        if (loc) {
-            loc.titre = document.getElementById('edit-titre').value;
-            loc.numero = document.getElementById('edit-numero').value;
-            loc.rue = document.getElementById('edit-rue').value;
-            loc.cp = document.getElementById('edit-cp').value;
-            loc.ville = document.getElementById('edit-ville').value;
-            loc.iconType = document.getElementById('edit-icon-type').value;
-            loc.categorie = document.getElementById('edit-categorie').value;
-            loc.layerId = document.getElementById('edit-layer').value;
-            loc.popupAlwaysOn = document.getElementById('edit-popup-always').checked;
-            refreshUI();
-            closeModal();
+function saveModalChanges() {
+    const id = Number(document.getElementById('edit-id').value);
+    const loc = savedLocations.find(l => l.id === id);
+    if (loc) {
+        loc.titre = document.getElementById('edit-titre').value;
+        loc.numero = document.getElementById('edit-numero').value;
+        loc.rue = document.getElementById('edit-rue').value;
+        loc.cp = document.getElementById('edit-cp').value;
+        loc.ville = document.getElementById('edit-ville').value;
+        loc.iconType = document.getElementById('edit-icon-type').value;
+        loc.categorie = document.getElementById('edit-categorie').value;
+        loc.layerId = document.getElementById('edit-layer').value;
+        loc.popupAlwaysOn = document.getElementById('edit-popup-always').checked;
+        
+        // Sauvegarder l'emoji si le type est 'emoji'
+        if (loc.iconType === 'emoji') {
+            loc.emoji = document.getElementById('edit-emoji').value;
+        } else {
+            delete loc.emoji; // Supprimer l'emoji si on change de type
         }
+        
+        refreshUI();
+        closeModal();
     }
+}
 
     // --- GESTION DES CATÉGORIES ---
     function openCategoryModal(id) {
@@ -1616,42 +1772,59 @@ function sortCommunes(critere, ordre, btn) {
         updateSidebar();
     }
 
-    function focusPoint(id) {
-        const loc = savedLocations.find(l => l.id === id);
-        map.setView([loc.lat, loc.lon], 15);
-        const marker = markersLayer.getLayer(loc._markerId);
-        if (marker) {
-            if (!loc.popupAlwaysOn) marker.openPopup();
-        }
+function focusPoint(id) {
+    const loc = savedLocations.find(l => l.id === id);
+    if (!loc) return;
+    
+    map.setView([loc.lat, loc.lon], 15);
+    const marker = markersLayer.getLayer(loc._markerId);
+    if (marker) {
+        if (!loc.popupAlwaysOn) marker.openPopup();
     }
+    
+    // Trouver l'index du point dans le tableau
+    const index = savedLocations.findIndex(l => l.id === id);
+    
+    // Remonter le point en première position (s'il n'est pas déjà en tête)
+    if (index > 0) {
+        // Retirer le point de sa position actuelle
+        const [point] = savedLocations.splice(index, 1);
+        // L'ajouter au début du tableau
+        savedLocations.unshift(point);
+        // Rafraîchir l'affichage
+        refreshUI();
+    }
+}
 
     // --- EXPORT EXCEL ---
     async function exportToExcel() {
         if (!ensureXLSX()) return;
 
         // Feuille des points
-        const pointsData = savedLocations.map(l => {
-            const layer = layers.find(ly => ly.id === l.layerId) || layers[0];
-            return {
-                "Titre de la Carte": document.getElementById('map-title').innerText,
-                "Nom du lieu": l.titre,
-                "Numéro": l.numero,
-                "Rue": l.rue,
-                "Code Postal": l.cp,
-                "Ville": l.ville,
-                "Latitude": l.lat,
-                "Longitude": l.lon,
-                "Catégorie": l.categorie,
-                "Couleur": categories[l.categorie],
-                "Couche": layer.name,
-                "Couleur couche": layer.color,
-                "Rayon cercle (km)": l.circle ? l.circle.radiusKm : "",
-                "Couleur cercle": l.circle ? l.circle.color : "",
-                "Type d'icône": l.iconType || "circle",
-                "Isochrone": l.isochrone ? JSON.stringify(l.isochrone) : "",
-                "Popup toujours visible": l.popupAlwaysOn ? "true" : "false"
-            };
-        });
+        // Feuille des points
+const pointsData = savedLocations.map(l => {
+    const layer = layers.find(ly => ly.id === l.layerId) || layers[0];
+    return {
+        "Titre de la Carte": document.getElementById('map-title').innerText,
+        "Nom du lieu": l.titre,
+        "Numéro": l.numero,
+        "Rue": l.rue,
+        "Code Postal": l.cp,
+        "Ville": l.ville,
+        "Latitude": l.lat,
+        "Longitude": l.lon,
+        "Catégorie": l.categorie,
+        "Couleur": categories[l.categorie],
+        "Couche": layer.name,
+        "Couleur couche": layer.color,
+        "Rayon cercle (km)": l.circle ? l.circle.radiusKm : "",
+        "Couleur cercle": l.circle ? l.circle.color : "",
+        "Type d'icône": l.iconType || "circle",
+        "Emoji": l.emoji || "",  // NOUVEAU
+        "Isochrone": l.isochrone ? JSON.stringify(l.isochrone) : "",
+        "Popup toujours visible": l.popupAlwaysOn ? "true" : "false"
+    };
+});
 
         // Feuille des communes
         const communesData = selectedCommunes.map(c => {
@@ -1764,19 +1937,20 @@ function sortCommunes(critere, ordre, btn) {
                             if (isNaN(lat) || isNaN(lon)) return;
 
                             const loc = {
-                                id: Date.now() + Math.random(),
-                                titre: row["Nom du lieu"] || "Sans titre",
-                                numero: row["Numéro"] || "",
-                                rue: row["Rue"] || "",
-                                cp: row["Code Postal"] || "",
-                                ville: row["Ville"] || "",
-                                lat: lat,
-                                lon: lon,
-                                categorie: cat || "Par défaut",
-                                layerId: layerId,
-                                iconType: row["Type d'icône"] || "circle",
-                                popupAlwaysOn: row["Popup toujours visible"] === "true"
-                            };
+								id: Date.now() + Math.random(),
+								titre: row["Nom du lieu"] || "Sans titre",
+								numero: row["Numéro"] || "",
+								rue: row["Rue"] || "",
+								cp: row["Code Postal"] || "",
+								ville: row["Ville"] || "",
+								lat: lat,
+								lon: lon,
+								categorie: cat || "Par défaut",
+								layerId: layerId,
+								iconType: row["Type d'icône"] || "circle",
+								emoji: row["Emoji"] || "😊",  // NOUVEAU
+								popupAlwaysOn: row["Popup toujours visible"] === "true"
+							};
 
                             if (row["Rayon cercle (km)"] && row["Couleur cercle"]) {
                                 const radius = parseFloat(row["Rayon cercle (km)"]);
@@ -1800,6 +1974,7 @@ function sortCommunes(critere, ordre, btn) {
                     }
                 }
 
+// --- Import des communes (feuille "Communes") ---
 // --- Import des communes (feuille "Communes") ---
 if (workbook.SheetNames.includes("Communes")) {
     const worksheetCommunes = workbook.Sheets["Communes"];
@@ -1855,14 +2030,41 @@ if (workbook.SheetNames.includes("Communes")) {
             }
 
             const layerColorCode = (communeLayers.find(l => l.id === layerId) || communeLayers[0]).color;
+            
+            // CRÉATION DE LA COUCHE AVEC INTERACTIVITÉ ET TOOLTIP
             const layer = L.geoJSON(geojson, {
                 style: {
                     fillColor: layerColorCode,
                     color: layerColorCode,
                     weight: 1,
                     fillOpacity: 0.1
-                }
+                },
+                interactive: true,  // ← Important pour les clics
+                pane: 'overlayPane'
             }).addTo(map);
+            
+            // AJOUT DU TOOLTIP ET DU CLIC SUR CHAQUE FEATURE
+            layer.eachLayer(function(featureLayer) {
+                featureLayer.bindTooltip(nom, { 
+                    sticky: true, 
+                    direction: 'top', 
+                    offset: [0, -10] 
+                });
+                
+                featureLayer.on('click', function(e) {
+                    L.DomEvent.stopPropagation(e);
+                    // Créer un faux layerInstance pour addCommuneToList
+                    const fakeLayerInstance = {
+                        feature: featureLayer.feature
+                    };
+                    addCommuneToList({
+                        code: code,
+                        nom: nom,
+                        departement: deptNom,
+                        population: population
+                    }, fakeLayerInstance);
+                });
+            });
 
             const newCommune = {
                 code: code,
@@ -1873,6 +2075,7 @@ if (workbook.SheetNames.includes("Communes")) {
                 _mapLayer: layer
             };
             selectedCommunes.push(newCommune);
+            
         } catch (err) {
             console.error("Erreur chargement commune", code, err);
             // Ajouter quand même sans géométrie
@@ -1891,7 +2094,7 @@ if (workbook.SheetNames.includes("Communes")) {
     for (const [deptCode, deptNom] of deptsMap) {
         createDeptButton(deptCode, deptNom);
     }
-	updateCounters();
+    updateCounters();
     updateCommunesUI();
 }
 
@@ -2231,7 +2434,7 @@ function createDeptButton(code, nom) {
     // Créer le bouton
     const btn = document.createElement('button');
     btn.id = `btn-dept-${code}`;
-    btn.className = 'btn-dept';
+    btn.className = 'btn-dept active'; // Ajouter la classe active directement
     
     // Sélecteur de couleur
     const colorPicker = document.createElement('input');
@@ -2264,7 +2467,71 @@ function createDeptButton(code, nom) {
     wrapper.appendChild(btn);
     wrapper.appendChild(removeSpan);
     container.appendChild(wrapper);
-	updateCounters();
+    
+    // Charger automatiquement les limites communales
+    loadDeptBoundaries(code, btn, colorPicker.value);
+    
+    updateCounters();
+}
+
+async function loadDeptBoundaries(code, btn, selectedColor) {
+    const statusSpan = btn.querySelector('span');
+    const originalText = statusSpan.innerText;
+    statusSpan.innerText = "Chargement...";
+    
+    try {
+        const geoUrl = `https://geo.api.gouv.fr/departements/${code}/communes?format=geojson&geometry=contour`;
+        const response = await fetch(geoUrl);
+        const geojson = await response.json();
+
+        const layer = L.geoJSON(geojson, {
+            style: {
+                color: selectedColor,
+                weight: 2,
+                fillOpacity: 0.1,
+                fillColor: selectedColor
+            },
+            interactive: true,
+            pane: 'overlayPane',
+            onEachFeature: (feature, layer) => {
+                layer.bindTooltip(feature.properties.nom, { 
+                    sticky: true,
+                    direction: 'top',
+                    offset: [0, -10]
+                });
+                
+                layer.on('click', function(e) {
+                    L.DomEvent.stopPropagation(e);
+                    
+                    const deptNom = btn.querySelector('span').innerText.split(' - ')[1] || code;
+                    
+                    const fakeLayerInstance = {
+                        feature: feature
+                    };
+                    
+                    addCommuneToList({
+                        code: feature.properties.code,
+                        nom: feature.properties.nom,
+                        departement: deptNom,
+                        population: feature.properties.population || 'N/C'
+                    }, fakeLayerInstance);
+                });
+            }
+        }).addTo(map);
+
+        activeDeptLayers[code] = layer;
+        btn.classList.add('active');
+        btn.style.backgroundColor = "#27ae60";
+        statusSpan.innerText = originalText;
+        
+        map.fitBounds(layer.getBounds());
+        ensureMarkersOnTop();
+    } catch (e) {
+        alert("Erreur lors du chargement des limites communales.");
+        statusSpan.innerText = originalText;
+        btn.classList.remove('active');
+        btn.style.backgroundColor = "#34495e";
+    }
 }
 
 async function toggleDeptBoundaries(code, btn, selectedColor) {
@@ -2290,22 +2557,36 @@ async function toggleDeptBoundaries(code, btn, selectedColor) {
                     fillOpacity: 0.1,
                     fillColor: selectedColor
                 },
-onEachFeature: (feature, layer) => {
-    layer.on('click', (e) => {
-        L.DomEvent.stopPropagation(e);
-        // Récupérer le nom du département depuis le bouton ou l'API
-        const deptNom = btn.querySelector('span').innerText.split(' - ')[1] || nom;
-        
-        // Ajouter la commune avec les bonnes propriétés
-        addCommuneToList({
-            code: feature.properties.code,
-            nom: feature.properties.nom,
-            departement: deptNom,
-            population: feature.properties.population || 'N/C'
-        }, layer);
-    });
-    layer.bindTooltip(feature.properties.nom, { sticky: true });
-}
+                interactive: true,  // ← Garder interactif
+                pane: 'overlayPane',
+                onEachFeature: (feature, layer) => {
+                    // Tooltip au survol
+                    layer.bindTooltip(feature.properties.nom, { 
+                        sticky: true,
+                        direction: 'top',
+                        offset: [0, -10]
+                    });
+                    
+                    // Événement de clic pour ajouter/remonter la commune
+                    layer.on('click', function(e) {
+                        L.DomEvent.stopPropagation(e);
+                        
+                        // Récupérer le nom du département
+                        const deptNom = btn.querySelector('span').innerText.split(' - ')[1] || code;
+                        
+                        // Créer un faux layerInstance pour addCommuneToList
+                        const fakeLayerInstance = {
+                            feature: feature
+                        };
+                        
+                        addCommuneToList({
+                            code: feature.properties.code,
+                            nom: feature.properties.nom,
+                            departement: deptNom,
+                            population: feature.properties.population || 'N/C'
+                        }, fakeLayerInstance);
+                    });
+                }
             }).addTo(map);
 
             activeDeptLayers[code] = layer;
@@ -2314,12 +2595,15 @@ onEachFeature: (feature, layer) => {
             statusSpan.innerText = originalText;
             
             map.fitBounds(layer.getBounds());
+            ensureMarkersOnTop();
+            
         } catch (e) {
             alert("Erreur lors du chargement.");
             statusSpan.innerText = originalText;
         }
     }
 }
+
 
 function removeDeptButton(code, event) {
     // On empêche le clic de déclencher aussi la recherche du département
@@ -2547,6 +2831,356 @@ function updateCounters() {
     const communeCount = selectedCommunes.length;
     document.getElementById('dept-count').textContent = deptCount;
     document.getElementById('commune-count').textContent = communeCount;
+}
+
+// --- FONCTION POUR OUVRIR LE MODE D'EMPLOI DANS UN NOUVEL ONGLET ---
+function openHelpInNewWindow() {
+    // Créer le contenu HTML du mode d'emploi
+    const helpContent = `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Mode d'emploi - Outil SIG EPL du Bourbonnais</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #ff6600;
+            padding-bottom: 10px;
+            text-align: center;
+            font-size: 2.2em;
+        }
+        
+        h2 {
+            color: #ff6600;
+            margin-top: 30px;
+            border-left: 5px solid #ff6600;
+            padding-left: 15px;
+            font-size: 1.8em;
+        }
+        
+        h3 {
+            color: #006600;
+            margin-top: 25px;
+            font-size: 1.4em;
+            border-bottom: 1px dashed #006600;
+            padding-bottom: 5px;
+        }
+        
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+        
+        ul, ol {
+            margin-left: 20px;
+        }
+        
+        li {
+            margin-bottom: 5px;
+        }
+        
+        strong {
+            color: #e67e22;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            break-inside: avoid;
+        }
+        
+        .section h2 {
+            margin-top: 0;
+        }
+        
+        .note {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            h2 {
+                font-size: 1.5em;
+            }
+            
+            h3 {
+                font-size: 1.2em;
+            }
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .section {
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>📖 Mode d'emploi - Outil SIG EPL du Bourbonnais</h1>
+    
+    <div class="container">
+        <!-- 1. Introduction -->
+        <div class="section">
+            <h2>1. Introduction</h2>
+            <p><strong>Cet outil cartographique permet de :</strong></p>
+            <ul>
+                <li>Ajouter et gérer des points GPS avec diff&eacute;rentes ic&ocirc;nes (formes, emojis)</li>
+                <li>S&eacute;lectionner et g&eacute;rer des communes fran&ccedil;aises</li>
+                <li>Calculer des cercles et isochrones autour des points</li>
+                <li>Calculer des itin&eacute;raires entre points</li>
+                <li>Exporter/importer des donn&eacute;es (Excel, KML)</li>
+            </ul>
+        </div>
+
+        <!-- 2. Interface principale -->
+        <div class="section">
+            <h2>2. Interface principale</h2>
+            <h3>Barre d'outils sup&eacute;rieure</h3>
+            <ul>
+                <li><strong>Titre du projet</strong> : Modifiable en cliquant dessus</li>
+                <li><strong>Ouvrir</strong> : Importer un fichier Excel</li>
+                <li><strong>Enregistrer</strong> : Exporter en Excel</li>
+                <li><strong>Exporter KML</strong> : Exporter au format KML</li>
+                <li><strong>R&eacute;cup&eacute;rer KML</strong> : Importer un fichier KML/KMZ</li>
+            </ul>
+            
+            <h3>Barre de saisie</h3>
+            <ul>
+                <li><strong>Adresse</strong> : Saisir une adresse compl&egrave;te</li>
+                <li><strong>Lat/Lon</strong> : Saisir des coordonn&eacute;es GPS (notamment quand l\'adresse compl&egrave;te ne fonctionne pas)</li>
+                <li><strong>Ajouter le Point</strong> : Valider la saisie</li>
+            </ul>
+            
+            <h3>Colonnes lat&eacute;rales</h3>
+            <ul>
+                <li><strong>Gauche</strong> : Liste des points GPS avec boutons de tri et actions</li>
+                <li><strong>Droite</strong> : Liste des communes s&eacute;lectionn&eacute;es</li>
+            </ul>
+        </div>
+
+        <!-- 3. Gestion des points GPS -->
+        <div class="section">
+            <h2>3. Gestion des points GPS</h2>
+            <h3>Ajouter un point</h3>
+            <ol>
+                <li>Saisir une adresse <strong>OU</strong> des coordonn&eacute;es GPS</li>
+                <li>Cliquer sur <strong>Ajouter le Point</strong></li>
+                <li>Le point appara&icirc;t sur la carte et dans la liste</li>
+            </ol>
+            
+            <h3>Modifier un point</h3>
+            <ul>
+                <li>Cliquer sur l'ic&ocirc;ne <strong>✏️</strong> dans la liste</li>
+                <li>Modifier les informations (titre, adresse, type d'ic&ocirc;ne, cat&eacute;gorie, couche)</li>
+            </ul>
+            
+            <h3>Emojis</h3>
+            <p>S&eacute;lectionner "Emoji (personnalisable)" dans le type d'ic&ocirc;ne</p>
+            
+            <h3>Cercles</h3>
+            <p>Cliquer sur <strong>⭕</strong> pour d&eacute;finir un rayon (km) et une couleur</p>
+            
+            <h3>Isochrones</h3>
+            <p>Cliquer sur <strong>⏱️</strong> pour calculer une zone de temps de trajet</p>
+            <div class="note">
+                <strong>Note :</strong> Une cl&eacute; API OpenRouteService est n&eacute;cessaire. Obtenez-la sur <a href="https://account.heigit.org/manage/key" target="_blank">https://account.heigit.org</a>
+				<br>(Créer un compte puis copier la clé récupérable à cette adresse https://account.heigit.org/manage/key)
+            </div>
+            
+            <h3>G&eacute;rer les cat&eacute;gories/couches</h3>
+            <ul>
+                <li>Cliquer sur le tag de cat&eacute;gorie dans la liste</li>
+                <li>Utiliser le bouton <strong>Couches</strong> pour g&eacute;rer les couches</li>
+            </ul>
+            
+            <h3>Supprimer un point</h3>
+            <ul>
+                <li>Cliquer sur l'ic&ocirc;ne <strong>🗑️</strong> dans la liste</li>
+                <li>Confirmer la suppression</li>
+            </ul>
+        </div>
+
+        <!-- 4. Gestion des communes -->
+        <div class="section">
+            <h2>4. Gestion des communes</h2>
+            <h3>Afficher un d&eacute;partement</h3>
+            <ol>
+                <li>Saisir un code d&eacute;partement (ex: 03 pour l'Allier)</li>
+                <li>Cliquer sur <strong>🔍</strong></li>
+                <li>Le d&eacute;partement appara&icirc;t avec ses limites communales</li>
+                <li>Les communes sont cliquables</li>
+            </ol>
+            
+            <h3>S&eacute;lectionner une commune</h3>
+            <ul>
+                <li><strong>Depuis la carte</strong> : Cliquer sur une commune du d&eacute;partement</li>
+                <li>La commune est ajout&eacute;e &agrave; la liste de droite</li>
+                <li>La commune appara&icirc;t en vert sur la carte</li>
+            </ul>
+            
+            <h3>Remonter une commune</h3>
+            <ul>
+                <li>Cliquer sur la commune dans la liste <strong>OU</strong> sur son polygone sur la carte</li>
+                <li>La commune passe en premi&egrave;re position</li>
+                <li>La carte zoome sur la commune</li>
+            </ul>
+            
+            <h3>Changer la couche d'une commune</h3>
+            <ul>
+                <li>Cliquer sur le tag color&eacute; &agrave; c&ocirc;t&eacute; du nom</li>
+                <li>S&eacute;lectionner une couche dans la modale</li>
+                <li>La couleur de la commune change</li>
+            </ul>
+            
+            <h3>G&eacute;rer l'affichage des d&eacute;partements</h3>
+            <ul>
+                <li><strong>D&eacute;sactiver/r&eacute;activer</strong> : Cliquer sur le bouton du d&eacute;partement</li>
+                <li><strong>Supprimer</strong> : Cliquer sur la poubelle &agrave; droite du bouton</li>
+                <li><strong>Changer la couleur</strong> : Utiliser le s&eacute;lecteur rond &agrave; gauche</li>
+            </ul>
+            
+            <h3>Supprimer une commune</h3>
+            <ul>
+                <li>Cliquer sur l'ic&ocirc;ne <strong>🗑️</strong> &agrave; droite de la commune</li>
+                <li>La commune dispara&icirc;t de la carte</li>
+            </ul>
+        </div>
+
+        <!-- 5. Calcul d'itinéraire -->
+        <div class="section">
+            <h2>5. Calcul d'itin&eacute;raire</h2>
+            <ol>
+                <li>Cliquer sur le bouton <strong>Itin&eacute;raire</strong> au-dessus de la liste des points</li>
+                <li>S&eacute;lectionner un point de d&eacute;part et un point d'arriv&eacute;e</li>
+                <li>Choisir le mode de transport</li>
+                <li>Entrer une cl&eacute; API OpenRouteService</li>
+                <li>Cliquer sur <strong>Calculer</strong></li>
+                <li>L'itin&eacute;raire appara&icirc;t en bleu sur la carte</li>
+                <li>Les distances et dur&eacute;es s'affichent</li>
+            </ol>
+            <div class="note">
+                <strong>Note :</strong> Une cl&eacute; API OpenRouteService est n&eacute;cessaire. Obtenez-la sur <a href="https://account.heigit.org/manage/key" target="_blank">https://account.heigit.org</a>
+				<br>(Créer un compte puis copier la clé récupérable à cette adresse https://account.heigit.org/manage/key)
+				<br>La m&ecirc;me cl&eacute; API que pour les isochrones peut &ecirc;tre utilis&eacute;e.
+            </div>
+        </div>
+
+        <!-- 6. Import/Export -->
+        <div class="section">
+            <h2>6. Import/Export</h2>
+            <h3>Enregistrer son travail</h3>
+            <ul>
+                <li>Cliquer sur <strong>Enregistrer</strong></li>
+                <li>Le fichier exporte les feuilles "Points" et "Communes" dans un fichier Excel qui contient l'ensemble des données du travail en cours (département, formes, couleurs,...)</li>
+            </ul>
+            
+            <h3>Récupérer son travail</h3>
+            <ul>
+                <li>Cliquer sur <strong>Ouvrir</strong></li>
+                <li>S&eacute;lectionner le fichier Excel </li>
+                <li>Les points, les départements et les communes sont restaur&eacute;s</li>
+            </ul>
+            
+            <h3>Exporter en KML</h3>
+            <ul>
+                <li>Cliquer sur <strong>Exporter KML</strong></li>
+                <li>Tous les points et leurs cercles/isochrones sont export&eacute;s</li>
+            </ul>
+            
+            <h3>Importer un fichier KML/KMZ</h3>
+            <ul>
+                <li>Cliquer sur <strong>R&eacute;cup&eacute;rer KML</strong></li>
+                <li>S&eacute;lectionner un fichier .kml ou .kmz</li>
+                <li>Les points sont import&eacute;s</li>
+            </ul>
+        </div>
+
+        <!-- 7. Raccourcis et astuces -->
+        <div class="section full-width">
+            <h2>7. Raccourcis et astuces</h2>
+            <ul style="columns: 2; column-gap: 20px;">
+                <li><strong>Tri</strong> : Utiliser les boutons de tri pour organiser les listes</li>
+                <li><strong>Focus</strong> : Cliquer sur un &eacute;l&eacute;ment dans la liste pour zoomer</li>
+                <li><strong>Cl&eacute; API</strong> : &Agrave; conserver pour les calculs d'isochrones et d'itin&eacute;raires</li>
+                <li><strong>Ordre d'affichage</strong> : Les points GPS sont toujours au premier plan</li>
+                <li><strong>Popup permanent</strong> : Option dans l'&eacute;dition pour afficher le nom en permanence</li>
+                <li><strong>Sauvegarde</strong> : Exporter r&eacute;guli&egrave;rement en Excel pour ne pas perdre les donn&eacute;es</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Version : 07/03/2026 - J-F D, Lyc&eacute;e Agricole du Bourbonnais</p>
+    </div>
+
+    <script>
+        // Optionnel : ajouter un bouton d'impression
+        window.onload = function() {
+            const printButton = document.createElement('button');
+            printButton.innerHTML = '🖨️ Imprimer ce mode d\'emploi';
+            printButton.style.cssText = 'position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; background: #2c3e50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);';
+            printButton.onclick = function() { window.print(); };
+            document.body.appendChild(printButton);
+        };
+    <\/script>
+</body>
+</html>
+    `;
+
+    // Ouvrir une nouvelle fenêtre avec le contenu
+    const helpWindow = window.open('', '_blank');
+    helpWindow.document.write(helpContent);
+    helpWindow.document.close();
 }
 
 </script>
