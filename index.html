@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8"> 
+    <meta charset="UTF-8">
     <title>Outil SIG EPL du Bourbonnais</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root { --primary: #2c3e50; --bg: #f4f7f6; --danger: #e74c3c; --success: #27ae60; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; margin: 0; background: var(--bg); }
@@ -254,6 +255,18 @@
     color: #ff4d4d;
 }
 
+/* Désactive les clics sur les cercles et polygones quand on place un point */
+/* Rend TOUTES les formes transparentes au clic en mode placement */
+.map-picking-mode .leaflet-interactive,
+.map-picking-mode .leaflet-vml-pane svg,
+.map-picking-mode .leaflet-overlay-pane svg {
+    pointer-events: none !important;
+}
+
+/* Change le curseur sur toute la carte pour bien voir qu'on est en mode sélection */
+.map-picking-mode {
+    cursor: crosshair !important;
+}
 
     </style>
 </head>
@@ -269,6 +282,7 @@
         <input type="file" id="importExcel" accept=".xlsx, .xls" onchange="importFromExcel(event)" style="display: none;">
 
         <button class="btn btn-export" onclick="exportToExcel()" style="padding: 8px 15px;">💾 Enregistrer</button>
+		<button class="btn" onclick="exportMapToJPG()" style="background: white; color: black; padding: 8px 15px;">📸 Exporter JPG</button>
         <button class="btn btn-kml" onclick="exportToKML()" style="padding: 8px 15px;">🗺️ Exporter KML</button>
 		<button class="btn btn-kml" onclick="importFromKML()" style="padding: 8px 15px; background: #8e44ad;">📂 Récupérer KML</button>
 		<input type="file" id="importKML" accept=".kml,.kmz" onchange="handleKMLImport(event)" style="display: none;">
@@ -283,7 +297,8 @@
     <input type="number" id="latInput" placeholder="Lat" step="any" >
     <input type="number" id="lonInput" placeholder="Lon" step="any" >
     <button class="btn btn-save" onclick="handleAddPoint()" style="background: var(--primary);">✅ Ajouter le Point</button>
-
+	<span style="font-weight: bold; color: white;">Ou positionner un point manuellement</span>
+	<button class="btn btn-save" id="map-picker-btn" onclick="toggleMapPicker()" style="background-color: #3498db; color: white;">🎯 Placer</button>
 </div>
 
 <div class="main-container">
@@ -649,6 +664,7 @@ const map = L.map('map', {
     zoom: 5,
 	zoomSnap: 0.5,    // Autorise des niveaux de zoom demi-entiers
     zoomDelta: 0.5,   // Pas de 0.5 pour les boutons +/-
+	preferCanvas: true,
     layers: [baseMaps["OpenStreetMap"]] // Assurez-vous que baseMaps est défini avant
 });
 
@@ -702,6 +718,10 @@ function ensureMarkersOnTop() {
     // Variables pour la gestion des départements
     let activeDeptLayers = {}; // Stocke les couches GeoJSON par code département
     let selectedCommunes = []; // Stocke les communes sélectionnées
+
+// Variables pour le mode "Pointer sur la carte"
+let mapPickerActive = false;
+let tempMarker = null;
 
 	updateCounters();
 
@@ -2833,6 +2853,188 @@ function updateCounters() {
     document.getElementById('commune-count').textContent = communeCount;
 }
 
+// Activer/désactiver le mode "Pointer sur la carte"
+// Activer/désactiver le mode "Pointer sur la carte"
+function toggleMapPicker() {
+    mapPickerActive = !mapPickerActive;
+    const btn = document.getElementById('map-picker-btn');
+    const mapDiv = document.getElementById('map');
+
+    if (mapPickerActive) {
+        btn.innerHTML = "❌ Annuler";
+        btn.style.backgroundColor = "#e74c3c";
+        
+        // Add a class to the map container
+        mapDiv.classList.add('map-picking-mode');
+        
+        // Add CSS to make all overlays non-interactive
+        const style = document.getElementById('map-picking-style') || document.createElement('style');
+        style.id = 'map-picking-style';
+        style.innerHTML = `
+            .map-picking-mode .leaflet-overlay-pane,
+            .map-picking-mode .leaflet-marker-pane,
+            .map-picking-mode .leaflet-popup-pane {
+                pointer-events: none !important;
+            }
+            .map-picking-mode {
+                cursor: crosshair !important;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Show a temporary message
+        showTemporaryMessage("Cliquez sur la carte pour placer un point");
+    } else {
+        btn.innerHTML = "🎯 Placer";
+        btn.style.backgroundColor = "#3498db";
+        mapDiv.classList.remove('map-picking-mode');
+        
+        // Remove the style
+        const style = document.getElementById('map-picking-style');
+        if (style) style.remove();
+        
+        // Remove temporary marker if exists
+        if (tempMarker) {
+            map.removeLayer(tempMarker);
+            tempMarker = null;
+        }
+    }
+}
+
+// Désactiver le mode "Pointer sur la carte"
+function deactivateMapPicker() {
+    const btn = document.getElementById('map-picker-btn');
+    
+    mapPickerActive = false;
+    btn.style.backgroundColor = '#3498db';
+    btn.innerHTML = '🎯 Pointer sur la carte';
+    
+    // Restaurer le curseur
+    map.getContainer().style.cursor = '';
+    
+    // Retirer l'écouteur de clic
+    map.off('click', onMapClick);
+    
+    // Supprimer le marqueur temporaire s'il existe
+    if (tempMarker) {
+        map.removeLayer(tempMarker);
+        tempMarker = null;
+    }
+}
+
+// Gestionnaire de clic sur la carte
+function onMapClick(e) {
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
+    
+    // Supprimer l'ancien marqueur temporaire
+    if (tempMarker) {
+        map.removeLayer(tempMarker);
+    }
+    
+    // Créer un marqueur temporaire à l'emplacement cliqué
+    tempMarker = L.marker([lat, lng], {
+        icon: L.divIcon({
+            html: '📍',
+            className: 'temp-marker',
+            iconSize: [30, 30],
+            iconAnchor: [15, 30]
+        })
+    }).addTo(map);
+    
+    // Ouvrir un dialogue pour saisir les informations du point
+    const titre = prompt('Nom du lieu (titre) :', 'Point sur la carte');
+    if (titre !== null) {
+        // Créer le nouveau point avec les coordonnées
+        const newLoc = {
+            id: Date.now(),
+            titre: titre || 'Point sur la carte',
+            numero: "",
+            rue: "Saisie manuelle",
+            ville: "N/A",
+            cp: "N/A",
+            lat: lat,
+            lon: lng,
+            categorie: "Par défaut",
+            layerId: 'default',
+            iconType: "circle",
+            popupAlwaysOn: false
+        };
+        
+        // Ajouter le point à la liste et rafraîchir
+        savedLocations.push(newLoc);
+        refreshUI();
+        
+        // Désactiver le mode "Pointer sur la carte"
+        deactivateMapPicker();
+        
+        // Optionnel : zoomer sur le nouveau point
+        map.setView([lat, lng], 15);
+    } else {
+        // Si l'utilisateur annule, supprimer le marqueur temporaire
+        map.removeLayer(tempMarker);
+        tempMarker = null;
+    }
+}
+
+map.on('click', function(e) {
+    if (mapPickerActive) {
+        // Récupération des coordonnées
+        const lat = e.latlng.lat.toFixed(6);
+        const lon = e.latlng.lng.toFixed(6);
+
+        // Remplissage des champs de saisie de la barre d'outils
+        document.getElementById('latInput').value = lat;
+        document.getElementById('lonInput').value = lon;
+
+        // Désactivation du mode placement
+        toggleMapPicker();
+
+        // Optionnel : déclencher directement l'ajout du point
+        // handleAddPoint(); 
+    }
+});
+
+// Afficher un message temporaire sur la carte
+function showTemporaryMessage(message) {
+    const msgDiv = document.createElement('div');
+    msgDiv.id = 'temp-message';
+    msgDiv.style.cssText = `
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 4px;
+        z-index: 1001;
+        font-size: 14px;
+        pointer-events: none;
+        animation: fadeOut 3s forwards;
+    `;
+    msgDiv.innerHTML = message;
+    
+    document.getElementById('map').appendChild(msgDiv);
+    
+    // Supprimer après 3 secondes
+    setTimeout(() => {
+        const msg = document.getElementById('temp-message');
+        if (msg) msg.remove();
+    }, 3000);
+}
+
+// Ajouter le style pour l'animation de fadeOut
+const style = document.createElement('style');
+style.innerHTML = `
+    @keyframes fadeOut {
+        0% { opacity: 1; }
+        70% { opacity: 1; }
+        100% { opacity: 0; }
+    }
+`;
+document.head.appendChild(style);
+
 // --- FONCTION POUR OUVRIR LE MODE D'EMPLOI DANS UN NOUVEL ONGLET ---
 function openHelpInNewWindow() {
     // Créer le contenu HTML du mode d'emploi
@@ -2989,22 +3191,24 @@ function openHelpInNewWindow() {
             <ul>
                 <li><strong>Titre du projet</strong> : Modifiable en cliquant dessus</li>
                 <li><strong>Ouvrir</strong> : Importer un fichier Excel</li>
-                <li><strong>Enregistrer</strong> : Exporter en Excel</li>
+                <li><strong>Enregistrer</strong> : Exporter en Excel</li>                
+				<li><strong>Exporter JPG</strong> : Enregistrer la carte sous forme d'image .jpg</li>
                 <li><strong>Exporter KML</strong> : Exporter au format KML</li>
                 <li><strong>R&eacute;cup&eacute;rer KML</strong> : Importer un fichier KML/KMZ</li>
             </ul>
             
-            <h3>Barre de saisie</h3>
+            <h3>Barre de saisie/positionnement des points GPS</h3>
             <ul>
                 <li><strong>Adresse</strong> : Saisir une adresse compl&egrave;te</li>
                 <li><strong>Lat/Lon</strong> : Saisir des coordonn&eacute;es GPS (notamment quand l\'adresse compl&egrave;te ne fonctionne pas)</li>
+                <li><strong>Placer</strong> : Positionner un point GPS manuellement</li>
                 <li><strong>Ajouter le Point</strong> : Valider la saisie</li>
             </ul>
             
-            <h3>Colonnes lat&eacute;rales</h3>
+            <h3>Colonnes lat&eacute;rales à droite</h3>
             <ul>
-                <li><strong>Gauche</strong> : Liste des points GPS avec boutons de tri et actions</li>
-                <li><strong>Droite</strong> : Liste des communes s&eacute;lectionn&eacute;es</li>
+                <li><strong>Première</strong> : Liste des points GPS avec boutons de tri et actions</li>
+                <li><strong>Deuxième</strong> : Liste des communes s&eacute;lectionn&eacute;es</li>
             </ul>
         </div>
 
@@ -3012,11 +3216,11 @@ function openHelpInNewWindow() {
         <div class="section">
             <h2>3. Gestion des points GPS</h2>
             <h3>Ajouter un point</h3>
-            <ol>
-                <li>Saisir une adresse <strong>OU</strong> des coordonn&eacute;es GPS</li>
-                <li>Cliquer sur <strong>Ajouter le Point</strong></li>
+            <ul>
+                <li>Saisir une adresse <strong>OU</strong> des coordonn&eacute;es GPS puis cliquer sur <strong>Ajouter le Point</strong> </li>
+                <li><strong>OU</strong> Cliquer sur <strong>Pointer</strong>, cliquer sur le lieu sur la carte (des coordonnées GPS apparaissent dans la barre de saisie) puis cliquer sur <strong>Ajouter le Point</strong></li>
                 <li>Le point appara&icirc;t sur la carte et dans la liste</li>
-            </ol>
+            </ul>
             
             <h3>Modifier un point</h3>
             <ul>
@@ -3054,6 +3258,7 @@ function openHelpInNewWindow() {
         <div class="section">
             <h2>4. Gestion des communes</h2>
             <h3>Afficher un d&eacute;partement</h3>
+			<div><strong>Obligatoire pour sélectionner les communes sur la carte !</strong></div>
             <ol>
                 <li>Saisir un code d&eacute;partement (ex: 03 pour l'Allier)</li>
                 <li>Cliquer sur <strong>🔍</strong></li>
@@ -3121,17 +3326,29 @@ function openHelpInNewWindow() {
             <h3>Enregistrer son travail</h3>
             <ul>
                 <li>Cliquer sur <strong>Enregistrer</strong></li>
-                <li>Le fichier exporte les feuilles "Points" et "Communes" dans un fichier Excel qui contient l'ensemble des données du travail en cours (département, formes, couleurs,...)</li>
+                <li>Si l'enregistrement se fait sans demande le fichier est enregistré dans "Téléchargements"</li>
+                <li>Sinon saisir un emplacement (dossier), un nom (par défaut le titre de la carte est proposé)</li>
+                <li>Le fichier exporte les feuilles "Points" et "Communes" dans un fichier Excel 
+				qui contient l'ensemble des données du travail en cours (département, formes, couleurs,...). 
+				Cela permet d'effectuer des modifications dans le fichier (changer le nom d'une couche à un lot de points, ...)
+				à l'aide d'Ecel ou LibreOffice avant l'ouverture dans l'outil SIG.</li>
             </ul>
             
             <h3>Récupérer son travail</h3>
             <ul>
                 <li>Cliquer sur <strong>Ouvrir</strong></li>
+                <li>Rechercher l'emplacement du fichier (dossier, cléUSB, ...) </li>
                 <li>S&eacute;lectionner le fichier Excel </li>
                 <li>Les points, les départements et les communes sont restaur&eacute;s</li>
             </ul>
             
-            <h3>Exporter en KML</h3>
+            <h3>Récupérer une image de la carte</h3>
+            <ul>
+                <li>Si l'enregistrement se fait sans demande le fichier est enregistré dans "Téléchargements"</li>
+                <li>Sinon saisir un emplacement (dossier), un nom (par défaut le titre de la carte et la date d'enregistrement sont proposés)</li>
+            </ul>           
+			
+			<h3>Exporter en KML</h3>
             <ul>
                 <li>Cliquer sur <strong>Exporter KML</strong></li>
                 <li>Tous les points et leurs cercles/isochrones sont export&eacute;s</li>
@@ -3160,7 +3377,7 @@ function openHelpInNewWindow() {
     </div>
 
     <div class="footer">
-        <p>Version : 07/03/2026 - J-F D, Lyc&eacute;e Agricole du Bourbonnais</p>
+        <p>Version : 08/03/2026 - J-F D, Lyc&eacute;e Agricole du Bourbonnais</p>
     </div>
 
     <script>
@@ -3181,6 +3398,88 @@ function openHelpInNewWindow() {
     const helpWindow = window.open('', '_blank');
     helpWindow.document.write(helpContent);
     helpWindow.document.close();
+}
+
+// Ajouter ces fonctions après la fonction openHelpInNewWindow()
+
+// --- EXPORT DE LA CARTE AU FORMAT JPG (VERSION AMÉLIORÉE) ---
+async function exportMapToJPG() {
+    const mapContainer = document.getElementById('map');
+    const exportBtn = event.target;
+    const originalText = exportBtn.innerHTML;
+
+    try {
+        // 1. Préparation de l'interface
+        exportBtn.innerHTML = '⏳ Traitement...';
+        exportBtn.disabled = true;
+
+        // 2. Masquer temporairement les éléments qui causent des décalages (boutons zoom, couches, etc.)
+        const controls = document.querySelectorAll('.leaflet-control-container');
+        controls.forEach(c => c.style.display = 'none');
+
+        // 3. Capture avec html2canvas
+        const canvas = await html2canvas(mapContainer, {
+            useCORS: true,           // Indispensable pour charger les tuiles OSM/Esri
+            allowTaint: true,
+            scale: 2,                // Augmente la résolution pour plus de précision
+            logging: false,
+            backgroundColor: null,
+            width: mapContainer.offsetWidth,
+            height: mapContainer.offsetHeight
+        });
+
+        // 4. Conversion en Blob JPEG
+        const blob = await new Promise(resolve => {
+            canvas.toBlob(resolve, 'image/jpeg', 0.98);
+        });
+
+        // 5. Procédure de téléchargement
+        const fileName = `Carte_SIG_${new Date().toISOString().slice(0,10)}.jpg`;
+
+        if ('showSaveFilePicker' in window) {
+            try {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: fileName,
+                    types: [{
+                        description: 'Image JPEG',
+                        accept: { 'image/jpeg': ['.jpg', '.jpeg'] }
+                    }]
+                });
+                const writable = await handle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    fallbackDownload(blob, fileName);
+                }
+            }
+        } else {
+            fallbackDownload(blob, fileName);
+        }
+
+    } catch (error) {
+        console.error('Erreur lors de l\'export JPG:', error);
+        alert('Erreur lors de l\'export de la carte : ' + error.message);
+    } finally {
+        // 6. Rétablir l'interface (Réafficher les boutons et le texte du bouton export)
+        const controls = document.querySelectorAll('.leaflet-control-container');
+        controls.forEach(c => c.style.display = 'block');
+        
+        exportBtn.innerHTML = originalText;
+        exportBtn.disabled = false;
+    }
+}
+
+// Fonction de secours pour le téléchargement
+function fallbackDownload(blob, fileName) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 </script>
