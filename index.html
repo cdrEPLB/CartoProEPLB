@@ -1102,22 +1102,54 @@ function removeCommune(index) {
         }
     }
 
-    async function geocodeAddress(address) {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
-            if (data.length > 0) {
-                const lat = parseFloat(data[0].lat);
-                const lon = parseFloat(data[0].lon);
-                addManualPoint(lat, lon);
-            } else {
-                alert("Adresse introuvable.");
-            }
-        } catch (error) {
-            alert("Erreur de géocodage.");
+async function geocodeAddress(address) {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&addressdetails=1&limit=1`;
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.length > 0) {
+            const result = data[0];
+            const lat = parseFloat(result.lat);
+            const lon = parseFloat(result.lon);
+            const addr = result.address || {};
+
+            // Extraction des champs selon la nomenclature Nominatim
+            const numero = addr.house_number || "";
+            const rue = addr.road || addr.pedestrian || addr.path || addr.street || "";
+            const cp = addr.postcode || "";
+            // La ville peut être city, town, village, hamlet, etc.
+            const ville = addr.city || addr.town || addr.village || addr.hamlet || addr.municipality || "";
+
+            // Titre : on prend le display_name tronqué ou on construit à partir des champs
+            const titre = result.display_name ? result.display_name.split(',')[0] : "Point géocodé";
+
+            addPointWithDetails(lat, lon, titre, numero, rue, cp, ville);
+        } else {
+            alert("Adresse introuvable.");
         }
+    } catch (error) {
+        console.error(error);
+        alert("Erreur de géocodage.");
     }
+}
+
+function addPointWithDetails(lat, lon, titre, numero, rue, cp, ville) {
+    const newLoc = {
+        id: Date.now(),
+        titre: titre || "Point sans titre",
+        numero: numero,
+        rue: rue,
+        cp: cp,
+        ville: ville,
+        lat: lat,
+        lon: lon,
+        categorie: "Par défaut",
+        layerId: 'default',
+        iconType: "circle",
+        popupAlwaysOn: false
+    };
+    saveAndDisplay(newLoc);
+}
 
     function addManualPoint(lat, lon) {
         const newLoc = {
