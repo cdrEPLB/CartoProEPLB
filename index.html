@@ -189,8 +189,9 @@
             margin-bottom: 10px;
         }
         .dept-search-form input {
-            flex: 1;
-            padding: 8px;
+            flex: 0 0 auto;
+			width: 50%; 
+            padding: 5px;
             border: 1px solid #ccc;
             border-radius: 4px;
         }
@@ -306,7 +307,7 @@
     <input type="number" id="lonInput" placeholder="Lon" step="any" >
 	<span style="font-weight: bold; color: white;">Ou positionner un point manuellement</span>
 	<button class="btn btn-save" id="map-picker-btn" onclick="toggleMapPicker()" style="background-color: #3498db; color: white;">🎯 Placer</button>
-	<button class="btn btn-save" onclick="handleAddPoint()" style="background: var(--primary);">✅ Ajouter le Point</button>
+    <button class="btn btn-save" onclick="handleAddPoint()" style="background: var(--primary);">✅ Ajouter le Point</button>
 </div>
 
 <div class="main-container">
@@ -359,8 +360,8 @@
         <span id="dept-count">0</span> Départ. / <span id="commune-count">0</span> Commune(s)
 
         <div class="dept-search-form">
-            <input type="text" id="deptInput" placeholder="Code département (ex: 03, 63...)">
-            <button class="btn btn-save" onclick="searchDepartment()" style="padding: 2px 2px;">🔍</button>
+            <input type="text" id="deptInput" placeholder="Code Département" title="Code Département (03, 58, 63...)">
+            <button class="btn btn-save" onclick="searchDepartment()" style="padding: 2 px 2px 2px; font-size:1.5em;" title="Ajouter le département">✅</button>
         </div>
         <div id="dept-buttons-container"></div>
     </div>  
@@ -372,17 +373,17 @@
         <button class="btn-sort" onclick="sortCommunes('nom', 'desc', this)" style="background:#34495e; color:white; flex: 1; font-size:0.7rem;" title="Trier par commune (Z à A)">
             <span>🏘️<br>▼</span>
         </button>
+		<button class="btn-sort" onclick="sortCommunes('layer', 'asc', this)" style="background:#27ae60; color:white; flex: 1; font-size:0.7rem;" title="Trier par couche (A à Z)">
+        <span>📁<br>▲</span>
+        </button>
+        <button class="btn-sort" onclick="sortCommunes('layer', 'desc', this)" style="background:#27ae60; color:white; flex: 1; font-size:0.7rem;" title="Trier par couche (Z à A)">
+            <span>📁<br>▼</span>
+        </button>
         <button class="btn-sort" onclick="sortCommunes('departement', 'asc', this)" style="background:#e67e22; color:white; flex: 1; font-size:0.7rem;" title="Trier par département (A à Z)">
             <span>🗺️<br>▲</span>
         </button>
         <button class="btn-sort" onclick="sortCommunes('departement', 'desc', this)" style="background:#e67e22; color:white; flex: 1; font-size:0.7rem;" title="Trier par département (Z à A)">
             <span>🗺️<br>▼</span>
-        </button>
-        <button class="btn-sort" onclick="sortCommunes('layer', 'asc', this)" style="background:#27ae60; color:white; flex: 1; font-size:0.7rem;" title="Trier par couche (A à Z)">
-            <span>📁<br>▲</span>
-        </button>
-        <button class="btn-sort" onclick="sortCommunes('layer', 'desc', this)" style="background:#27ae60; color:white; flex: 1; font-size:0.7rem;" title="Trier par couche (Z à A)">
-            <span>📁<br>▼</span>
         </button>
     </div>
     <div id="selectedCommunesList"></div>
@@ -683,7 +684,7 @@ L.control.layers(baseMaps).addTo(map);
 
 // NOUVEAU COPYRIGHT CENTRÉ 
 const copyrightDiv = L.DomUtil.create('div', 'map-copyright', document.getElementById('map'));
-copyrightDiv.innerHTML = '©️ OpenStreetMap contributors | ©️ 09/03/2026 Lycée Agricole du Bourbonnais';
+copyrightDiv.innerHTML = '©️ OpenStreetMap contributors | ©️ 10/03/2026 Lycée Agricole du Bourbonnais';
 
 
     // Variables globales
@@ -802,7 +803,6 @@ function focusCommune(index) {
 }
 
 // Mise à jour de l'UI des communes
-// Mise à jour de l'UI des communes
 function updateCommunesUI() {
     const list = document.getElementById('selectedCommunesList');
     list.innerHTML = "";
@@ -810,26 +810,36 @@ function updateCommunesUI() {
     selectedCommunes.forEach((com, index) => {
         const layer = communeLayers.find(l => l.id === com.layerId) || communeLayers[0];
         
-        // Extraire le nom simplifié (enlever " (Défaut)" si présent)
-        let layerDisplayName = layer.name;
-        if (layerDisplayName.includes(' (Défaut)')) {
-            layerDisplayName = layerDisplayName.replace(' (Défaut)', '');
-        }
+        // Récupérer le code du département (2 premiers chiffres du code commune)
+        const deptCode = com.code.substring(0, 2);
         
+        // Chercher la couleur du département
+        const deptBtn = document.getElementById(`btn-dept-${deptCode}`);
+        let activeColor = "#27ae60"; // Couleur par défaut
+
+        if (deptBtn) {
+            const picker = deptBtn.querySelector('.dept-color-picker');
+            if (picker) activeColor = picker.value;
+        }
+
         if (com._mapLayer) {
             if (layer.visible) {
                 // S'assurer que la couche est interactive
                 if (!map.hasLayer(com._mapLayer)) {
                     com._mapLayer.addTo(map);
                 }
-                com._mapLayer.setStyle({
-                    fillColor: layer.color,
-                    fillOpacity: 0.5,
-                    color: layer.color,
-                    weight: 0.5
+                
+                // Appliquer la couleur du département à toutes les limites
+                com._mapLayer.eachLayer(function(l) {
+                    l.setStyle({
+                        fillColor: layer.color,
+                        fillOpacity: 0.5,
+                        color: activeColor,  // La couleur des limites vient du département
+                        weight: 1
+                    });
                 });
                 
-                // Réattacher les événements de clic (au cas où)
+                // Réattacher les événements de clic
                 com._mapLayer.eachLayer(function(l) {
                     if (!l._events || !l._events.click) {
                         l.on('click', function(e) {
@@ -852,7 +862,6 @@ function updateCommunesUI() {
         div.className = "commune-item";
         div.style.borderLeft = `5px solid ${layer.color}`;
         
-        // Gestion du clic sur l'élément (sauf si on clique sur le bouton)
         div.onclick = (e) => {
             if (e.target.tagName !== 'BUTTON') {
                 focusCommune(index);
@@ -867,7 +876,7 @@ function updateCommunesUI() {
                 <div>
                     <span class="cat-tag" style="background:${layer.color};" 
                           onclick="event.stopPropagation(); openLayersModalForCommune(${index})">
-                        📁 ${layerDisplayName}
+                        📁 ${layer.name}
                     </span>
                 </div>
             </div>
@@ -1171,6 +1180,49 @@ function addPointWithDetails(lat, lon, titre, numero, rue, cp, ville) {
         document.getElementById('latInput').value = "";
         document.getElementById('lonInput').value = "";
     }
+
+async function reverseGeocode(lat, lon) {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1&zoom=18`;
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data && data.address) {
+            const addr = data.address;
+            
+            // Extraction des informations d'adresse
+            const numero = addr.house_number || "";
+            const rue = addr.road || addr.pedestrian || addr.path || addr.street || "";
+            const cp = addr.postcode || "";
+            const ville = addr.city || addr.town || addr.village || addr.hamlet || addr.municipality || "";
+            
+            // Titre : on prend le display_name ou on construit à partir des champs
+            let titre = "";
+            if (data.display_name) {
+                titre = data.display_name.split(',')[0]; // Première partie de l'adresse
+            } else if (numero && rue) {
+                titre = `${numero} ${rue}`;
+            } else if (rue) {
+                titre = rue;
+            } else {
+                titre = "Point placé manuellement";
+            }
+            
+            return { titre, numero, rue, cp, ville };
+        }
+    } catch (error) {
+        console.error("Erreur de reverse geocoding:", error);
+    }
+    
+    // En cas d'échec, retourner des valeurs par défaut
+    return {
+        titre: "Point placé manuellement",
+        numero: "",
+        rue: "",
+        cp: "",
+        ville: ""
+    };
+}
 
 // --- RENDU D'UN POINT ---
 function renderPointOnMap(loc) {
@@ -2503,12 +2555,35 @@ function createDeptButton(code, nom) {
     colorPicker.value = '#3498db';
     colorPicker.title = "Choisir la couleur des limites";
     colorPicker.onclick = (e) => e.stopPropagation();
-    colorPicker.onchange = () => {
-        if (activeDeptLayers[code]) {
-            // Mettre à jour la couleur de la couche existante
-            activeDeptLayers[code].setStyle({ color: colorPicker.value, fillColor: colorPicker.value });
+colorPicker.onchange = () => {
+    if (activeDeptLayers[code]) {
+        // Mettre à jour la couleur de la couche du département
+        activeDeptLayers[code].setStyle({ color: colorPicker.value, fillColor: colorPicker.value });
+        
+        // Mettre à jour la couleur des limites de TOUTES les communes sélectionnées de ce département
+        selectedCommunes.forEach(com => {
+            const comDeptCode = com.code.substring(0, 2);
+            if (comDeptCode === code && com._mapLayer) {
+                com._mapLayer.eachLayer(function(l) {
+                    l.setStyle({ color: colorPicker.value });
+                });
+            }
+        });
+    }
+};
+
+colorPicker.addEventListener('input', () => {
+    // Mettre à jour la couleur des limites de TOUTES les communes du département
+    selectedCommunes.forEach(com => {
+        const comDeptCode = com.code.substring(0, 2);
+        if (comDeptCode === code && com._mapLayer) {
+            com._mapLayer.eachLayer(function(l) {
+                l.setStyle({ color: colorPicker.value });
+            });
         }
-    };
+    });
+});
+
 
     // Texte du département
     const textSpan = document.createElement('span');
@@ -3017,23 +3092,80 @@ function onMapClick(e) {
     }
 }
 
-map.on('click', function(e) {
+map.on('click', async function(e) {
     if (mapPickerActive) {
-        // Récupération des coordonnées
-        const lat = e.latlng.lat.toFixed(6);
-        const lon = e.latlng.lng.toFixed(6);
-
-        // Remplissage des champs de saisie de la barre d'outils
-        document.getElementById('latInput').value = lat;
-        document.getElementById('lonInput').value = lon;
-
-        // Désactivation du mode placement
-        toggleMapPicker();
-
-        // Optionnel : déclencher directement l'ajout du point
-        // handleAddPoint(); 
+        const lat = e.latlng.lat;
+        const lon = e.latlng.lng;
+        
+        // Afficher un message de chargement
+        showTemporaryMessage("Recherche de l'adresse...");
+        
+        // Récupérer les informations d'adresse
+        const addressInfo = await reverseGeocode(lat, lon);
+        
+        // Créer un popup avec les informations pour confirmation
+        const popupContent = `
+            <b>Créer un point à cet emplacement ?</b><br><br>
+            <b>Titre:</b> ${addressInfo.titre}<br>
+            <b>Adresse:</b> ${addressInfo.numero} ${addressInfo.rue}<br>
+            <b>Code postal:</b> ${addressInfo.cp}<br>
+            <b>Ville:</b> ${addressInfo.ville}<br><br>
+            <button onclick="confirmPointCreation(${lat}, ${lon}, '${addressInfo.titre.replace(/'/g, "\\'")}', '${addressInfo.numero}', '${addressInfo.rue}', '${addressInfo.cp}', '${addressInfo.ville}')" style="padding:5px 10px; background:#27ae60; color:white; border:none; border-radius:5px; cursor:pointer;">✅ Confirmer</button>
+            <button onclick="cancelPointCreation()" style="padding:5px 10px; background:#e74c3c; color:white; border:none; border-radius:5px; cursor:pointer;">❌ Annuler</button>
+        `;
+        
+        // Afficher le popup à l'emplacement cliqué
+        const popup = L.popup({ className: 'confirmation-popup' })
+            .setLatLng([lat, lon])
+            .setContent(popupContent)
+            .openOn(map);
+        
+        // Stocker temporairement les infos pour les fonctions de confirmation
+        window.pendingPoint = { lat, lon, addressInfo, popup };
+        
+        // Désactiver le mode placement sans fermer le popup
+        mapPickerActive = false;
+        document.getElementById('map-picker-btn').innerHTML = "🎯 Placer";
+        document.getElementById('map-picker-btn').style.backgroundColor = "#3498db";
+        document.getElementById('map').classList.remove('map-picking-mode');
     }
 });
+
+// Fonctions de confirmation
+function confirmPointCreation(lat, lon, titre, numero, rue, cp, ville) {
+    const newLoc = {
+        id: Date.now(),
+        titre: titre,
+        numero: numero,
+        rue: rue,
+        cp: cp,
+        ville: ville,
+        lat: lat,
+        lon: lon,
+        categorie: "Par défaut",
+        layerId: 'default',
+        iconType: "circle",
+        popupAlwaysOn: false
+    };
+    
+    savedLocations.push(newLoc);
+    refreshUI();
+    map.setView([lat, lon], 15);
+    
+    // Fermer le popup
+    if (window.pendingPoint && window.pendingPoint.popup) {
+        map.closePopup(window.pendingPoint.popup);
+    }
+    
+    showTemporaryMessage("Point créé avec succès !");
+}
+
+function cancelPointCreation() {
+    if (window.pendingPoint && window.pendingPoint.popup) {
+        map.closePopup(window.pendingPoint.popup);
+    }
+    showTemporaryMessage("Création annulée");
+}
 
 // Afficher un message temporaire sur la carte
 function showTemporaryMessage(message) {
@@ -3241,7 +3373,7 @@ function openHelpInNewWindow() {
             <ul>
                 <li><strong>Adresse</strong> : Saisir une adresse compl&egrave;te</li>
                 <li><strong>Lat/Lon</strong> : Saisir des coordonn&eacute;es GPS (notamment quand l\'adresse compl&egrave;te ne fonctionne pas)</li>
-                <li><strong>Placer</strong> : Positionner un point GPS manuellement</li>
+                <li><strong>Placer</strong> : Positionner un point GPS manuellement (récupération, dans la mesure du possible, les informations du point GPS pour les afficher)</li>
                 <li><strong>Ajouter le Point</strong> : Valider la saisie</li>
             </ul>
             
@@ -3300,9 +3432,10 @@ function openHelpInNewWindow() {
             <h3>Afficher un d&eacute;partement</h3>
 			<div><strong>Obligatoire pour sélectionner les communes sur la carte !</strong></div>
             <ol>
-                <li>Saisir un code d&eacute;partement (ex: 03 pour l'Allier)</li>
-                <li>Cliquer sur <strong>🔍</strong></li>
-                <li>Le d&eacute;partement appara&icirc;t avec ses limites communales</li>
+                <li>Saisir le code d'un d&eacute;partement (ex: 03 pour l'Allier)</li>
+                <li>Cliquer sur <strong>✅</strong> pour valider</li>
+                <li>Le d&eacute;partement appara&icirc;t en vert avec ses limites communales (couleur modifiable : cliquer sur le rond de couleur, sélectionner une couleur, cliquer sur <strong>OK</strong>)</li>
+                <li>Il est possible de faire dispara&icirc;tre les limites des communes du d&eacute;partement : cliquer sur le bouton du d&eacute;partement (passe en sombre) ou sur la <strong>🗑️</strong>)</li>
                 <li>Les communes sont cliquables</li>
             </ol>
             
@@ -3394,10 +3527,10 @@ function openHelpInNewWindow() {
                 <li>Tous les points et leurs cercles/isochrones sont export&eacute;s</li>
             </ul>
             
-            <h3>Importer un fichier KML/KMZ</h3>
+            <h3>Importer un fichier KML</h3>
             <ul>
                 <li>Cliquer sur <strong>R&eacute;cup&eacute;rer KML</strong></li>
-                <li>S&eacute;lectionner un fichier .kml ou .kmz</li>
+                <li>S&eacute;lectionner un fichier .kml</li>
                 <li>Les points sont import&eacute;s</li>
             </ul>
         </div>
@@ -3417,7 +3550,8 @@ function openHelpInNewWindow() {
     </div>
 
     <div class="footer">
-        <p>Version : 09/03/2026 - J-F D, Lyc&eacute;e Agricole du Bourbonnais</p>
+        <p>Version : 10/03/2026 - J-F D, Lyc&eacute;e Agricole du Bourbonnais</p>
+		<small>Outil en HTML Javascript créé dans le cadre d'une expérimentation de Programmation Assistée par Itelligence Artificielle.</small>
     </div>
 
     <script>
@@ -3476,8 +3610,11 @@ async function exportMapToJPG() {
             canvas.toBlob(resolve, 'image/jpeg', 0.98);
         });
 
-        // 5. Procédure de téléchargement
-        const fileName = `Carte_SIG_${new Date().toISOString().slice(0,10)}.jpg`;
+		// 5. Définir le nom du fichier avec le titre de la carte
+        let mapTitle = document.getElementById('map-title').innerText.trim() || 'Carte_SIG';
+        // Remplacer les caractères interdits dans les noms de fichiers
+        mapTitle = mapTitle.replace(/[\\/:*?"<>|]/g, '_');
+        const fileName = `${mapTitle}_${new Date().toISOString().slice(0,10)}.jpg`;
 
         if ('showSaveFilePicker' in window) {
             try {
