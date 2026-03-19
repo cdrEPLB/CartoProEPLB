@@ -157,7 +157,7 @@
             background: #f8f9fa;
             font-weight: bold;
             font-size: 0.8rem;
-            text-transform: uppercase;
+            <!-- text-transform: uppercase; -->
             color: #7f8c8d;
             border-bottom: 1px solid #eee;
             text-align: center;
@@ -173,6 +173,7 @@
             display: flex;
             gap: 5px;
             margin-bottom: 10px;
+			justify-content: center;
         }
         .dept-search-form input {
             flex: 0 0 auto;
@@ -185,6 +186,7 @@
             display: flex;
             flex-wrap: wrap;
             gap: 4px;
+			justify-content: center;
         }
         .btn-dept {
             display: inline-flex;
@@ -199,6 +201,37 @@
             cursor: pointer;
             font-size: 0.85rem;
         }
+
+.btn-dept-container {
+    display: flex;
+    align-items: center;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 2px 8px;
+    margin-bottom: 5px;
+}
+
+.btn-dept {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    border: none;
+    background: none;
+    padding: 5px;
+    cursor: default;
+    font-size: 13px;
+}
+
+.btn-dept-remove {
+    cursor: pointer;
+    margin-left: 5px;
+    transition: transform 0.2s;
+}
+
+.btn-dept-remove:hover {
+    transform: scale(1.2);
+}
 
         .dept-color-picker {
             width: 20px;
@@ -231,9 +264,9 @@
 
 		/* Style de l'icône poubelle */
 		.btn-dept-remove {
-			position: absolute;
-			right: 5px;
-			top: 50%;
+			<!-- position: absolute; -->
+			<!-- right: 5px; -->
+			<!-- top: 50%; -->
 			transform: translateY(-50%);
 			color: rgba(255,255,255,0.7);
 			cursor: pointer;
@@ -301,7 +334,19 @@
 			transform: translateY(var(--button-offset));
 		}
 
+/* Styles pour les contrôles d'opacité dans les badges de département */
+.dept-opacity-controls button:hover {
+    background: rgba(255,255,255,0.5) !important;
+    transform: scale(1.1);
+    transition: all 0.2s;
+}
 
+.btn-dept {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding-right: 30px !important;
+}
 
     </style>
 </head>
@@ -327,7 +372,7 @@
 </header>
 
 <div class="toolbar">
-    <input type="text" id="addressInput" placeholder="Saisissez une adresse complète..." >
+    <input type="text" id="addressInput" placeholder="Adresse ? (attention : numéro pas toujours bien placé dans la rue !)" >
     <span style="font-weight: bold; color: white;">Ou coordonnées GPS</span>
     <input type="number" id="latInput" placeholder="Lat" step="any" >
     <input type="number" id="lonInput" placeholder="Lon" step="any" >
@@ -351,7 +396,7 @@
 
 <div class="columns-container">
 
-    <div style="display: flex; flex-direction: column; flex: 1.1; border-right: 1px solid #ddd;">
+    <div style="display: flex; flex-direction: column; flex: 1; border-right: 1px solid #ddd;">
         <div class="column-header"><strong id="count-label">0 Pts</strong>  <br>       
             <button class="btn btn-couche" onclick="openLayersModal('points')" style="padding: 5px 10px; font-size:0.9rem;">🗂️ Couches</button>
             <button class="btn" onclick="openRouteModal()" style="background: purple; color: white; padding: 5px 10px; font-size:0.9rem;">🗺️ Itinéraire</button></br>
@@ -381,12 +426,12 @@
         <div id="historyList"></div>
     </div>
     
-    <div style="display: flex; flex-direction: column; flex: 0.9;">
+    <div style="display: flex; flex-direction: column; flex: 1; text-align:center;">
         <div class="column-header">
             <span id="dept-count">0</span> Départ. / <span id="commune-count">0</span> Commune(s)
-            <div class="dept-search-form">
+            <div class="dept-search-form" >
                 <input type="text" id="deptInput" placeholder="Code Département" title="Code Département (03, 58, 63...)">
-                <button class="btn btn-save" onclick="searchDepartment()" style="padding: 2 px 2px 2px; font-size:1.5em;" title="Ajouter le département">✅</button>
+                <button onclick="searchDepartment()" style="padding: 2px; font-size:1.5em;" title="Ajouter le département">✅</button>
             </div>
             <div id="dept-buttons-container"></div>
         </div>  
@@ -665,6 +710,34 @@
     </div>
 </div>
 
+<!-- Modale pour Badge département -->
+<div id="deptSettingsModal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
+    <div class="modal-content" style="width: 350px;">
+        <h3 id="dept-modal-title">Réglages Département</h3>
+        <input type="hidden" id="current-dept-code">
+        
+        <div class="form-group">
+            <label>Couleur (Contour & Fond)</label>
+            <input type="color" id="modal-dept-color" style="width: 100%; height: 40px; cursor: pointer;">
+        </div>
+        
+        <div class="form-group">
+            <label>Opacité du contour (<span id="modal-dept-stroke-opacity-val">1.0</span>)</label>
+            <input type="range" id="modal-dept-stroke-opacity-range" min="0" max="1" step="0.1" value="1.0" style="width: 100%;">
+        </div>
+
+        <div class="form-group">
+            <label>Opacité du fond (<span id="modal-dept-opacity-val">0.5</span>)</label>
+            <input type="range" id="modal-dept-opacity-range" min="0" max="1" step="0.1" value="0.5" style="width: 100%;">
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeDeptModal()">Fermer</button>
+            <button class="btn btn-save" onclick="applyDeptSettings()">Appliquer</button>
+        </div>
+    </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     // Initialisation de la carte
@@ -695,10 +768,11 @@ const baseMaps = {
 
 // Initialisation de la carte et des fonds de carte
 const map = L.map('map', {
-    center: [46.6, 2.2],
-    zoom: 5,
+    center: [46.5, 3.3],
+    zoom: 7,
 	zoomSnap: 0.5,    // Autorise des niveaux de zoom demi-entiers
     zoomDelta: 0.5,   // Pas de 0.5 pour les boutons +/-
+	renderer: L.canvas(),
 	preferCanvas: true,
     layers: [baseMaps["OpenStreetMap"]] // Assurez-vous que baseMaps est défini avant
 });
@@ -710,7 +784,7 @@ L.control.layers(baseMaps).addTo(map);
 
 // NOUVEAU COPYRIGHT CENTRÉ 
 const copyrightDiv = L.DomUtil.create('div', 'map-copyright', document.getElementById('map'));
-copyrightDiv.innerHTML = '©️ OpenStreetMap contributors | ©️ 10/03/2026 Lycée Agricole du Bourbonnais';
+copyrightDiv.innerHTML = '©️ OpenStreetMap contributors | ©️ 19/03/2026 Lycée Agricole du Bourbonnais';
 
 
     // Variables globales
@@ -767,60 +841,49 @@ let tempMarker = null;
 function addCommuneToList(props, layerInstance) {
     const codeCom = props.code;
 
-    // --- SI LA COMMUNE EXISTE DÉJÀ → ON LA REMONTE ---
+    // 1. Si la commune est déjà sélectionnée, on la remonte juste en haut de la liste
     const existingIndex = selectedCommunes.findIndex(c => c.code === codeCom);
     if (existingIndex !== -1) {
         const existingCommune = selectedCommunes.splice(existingIndex, 1)[0];
         selectedCommunes.unshift(existingCommune);
         updateCommunesUI();
-        focusCommune(0);
         return;
     }
 
-    // --- CRÉATION D'UNE COUCHE INDÉPENDANTE (INTERACTIVE POUR LES CLICS) ---
-    const independentLayer = L.geoJSON(layerInstance.feature, {
+    // 2. Récupérer la couleur du département parent pour l'appliquer à la commune
+    const deptCode = codeCom.substring(0, 2);
+    const deptBtn = document.getElementById(`btn-dept-${deptCode}`);
+    const activeColor = deptBtn ? deptBtn.querySelector('.dept-color-picker').value : "#27ae60";
+    const deptOpacity = deptBtn ? parseFloat(document.querySelector(`.dept-opacity-${deptCode}`).innerText) : 0.5;
+
+    // 3. Création de la couche visuelle pour la commune sélectionnée
+    const communeLayer = L.geoJSON(layerInstance.feature, {
         style: {
-            fillColor: "#27ae60",
-            fillOpacity: 0.5,
-            color: "#27ae60",
-            weight: 0.5
+            fillColor: activeColor,
+            fillOpacity: Math.min(0.9, deptOpacity + 0.3), // Un peu plus opaque que le dept
+            color: activeColor,
+            weight: 2,
+            dashArray: '3' // Petit pointillé pour la distinguer
         },
-        interactive: true,  // ← DOIT ÊTRE true pour pouvoir cliquer
-        pane: 'overlayPane'
+        interactive: true
     }).addTo(map);
 
-    // Gestion du clic sur la commune
-    independentLayer.eachLayer(function(layer) {
-        layer.bindTooltip(props.nom, {
-            sticky: true,
-            direction: 'top',
-            offset: [0, -10]
-        });
-
-        layer.on('click', function(e) {
-            L.DomEvent.stopPropagation(e);
-            // Rappeler la fonction avec les mêmes props pour la remonter
-            addCommuneToList(props, layerInstance);
-        });
-    });
-
+    // 4. Ajouter les interactions (Tooltip + Clic pour désélectionner)
+    communeLayer.bindTooltip(`<b>${props.nom}</b> (${props.code})`, { sticky: true });
+    
+    // 5. Stockage dans l'array global
     const newCommune = {
         ...props,
-        departement: typeof props.departement === 'object'
-            ? props.departement.nom
-            : props.departement,
-        layerId: 'com-default',
-        _mapLayer: independentLayer,
-        visible: true  // NOUVEAU : propriété pour gérer la visibilité
+	departement: props.nom_dept || props.nomDepartement || props.departement || props.lib_dep || ("Départ. " + props.code.substring(0, 2)), 
+    _mapLayer: communeLayer, 
+    visible: true, 
+    color: activeColor
     };
 
     selectedCommunes.unshift(newCommune);
     updateCommunesUI();
-    
-    // Remettre les marqueurs au premier plan
-    ensureMarkersOnTop();
+    updateCounters();
 }
-
 function toggleCommuneVisibility(index) {
     const com = selectedCommunes[index];
     if (com && com._mapLayer) {
@@ -876,24 +939,32 @@ function updateCommunesUI() {
         // Chercher la couleur du département
         const deptBtn = document.getElementById(`btn-dept-${deptCode}`);
         let activeColor = "#27ae60"; // Couleur par défaut
+        let deptOpacity = 0.5;
 
         if (deptBtn) {
             const picker = deptBtn.querySelector('.dept-color-picker');
             if (picker) activeColor = picker.value;
+            
+            const opacitySpan = document.querySelector(`.dept-opacity-${deptCode}`);
+            if (opacitySpan) deptOpacity = parseFloat(opacitySpan.innerText);
         }
 
-        if (com._mapLayer && com.visible) {  // Vérifier la visibilité
-            // S'assurer que la couche est interactive
+        // Calculer l'opacité cible pour cette commune
+        let targetOpacity = com.opacity || deptOpacity + 0.3;
+        targetOpacity = Math.min(0.9, targetOpacity);
+        targetOpacity = Math.round(targetOpacity * 10) / 10;
+
+        if (com._mapLayer && com.visible) {
             if (!map.hasLayer(com._mapLayer)) {
                 com._mapLayer.addTo(map);
             }
             
-            // Appliquer la couleur du département à toutes les limites
+            // Appliquer le style avec l'opacité appropriée
             com._mapLayer.eachLayer(function(l) {
                 l.setStyle({
                     fillColor: layer.color,
-                    fillOpacity: 0.5,
-                    color: activeColor,  // La couleur des limites vient du département
+                    fillOpacity: targetOpacity,
+                    color: activeColor,
                     weight: 1
                 });
             });
@@ -903,17 +974,23 @@ function updateCommunesUI() {
                 if (!l._events || !l._events.click) {
                     l.on('click', function(e) {
                         L.DomEvent.stopPropagation(e);
+                        
+                        // Recalculer l'opacité au moment du clic
+                        const currentDeptOpacity = document.querySelector(`.dept-opacity-${deptCode}`);
+                        let newOpacity = currentDeptOpacity ? parseFloat(currentDeptOpacity.innerText) + 0.3 : 0.8;
+                        newOpacity = Math.min(0.9, newOpacity);
+                        newOpacity = Math.round(newOpacity * 10) / 10;
+                        
                         addCommuneToList({
                             code: com.code,
                             nom: com.nom,
                             departement: com.departement,
                             population: com.population
-                        }, l);
+                        }, l, newOpacity);
                     });
                 }
             });
         } else if (com._mapLayer && !com.visible) {
-            // S'assurer que la couche est retirée si elle n'est pas visible
             if (map.hasLayer(com._mapLayer)) {
                 map.removeLayer(com._mapLayer);
             }
@@ -929,8 +1006,7 @@ function updateCommunesUI() {
             }
         };
         
-        // Icône œil (ouvert ou fermé selon la visibilité)
-        const eyeIcon = com.visible ? '👁️' : '👁️‍🗨️';
+        const eyeIcon = com.visible ? '👁️' : '🚫';
         const eyeTitle = com.visible ? 'Masquer la commune' : 'Afficher la commune';
         
         div.innerHTML = `
@@ -2263,7 +2339,7 @@ async function importFromExcel(event) {
                             style: {
                                 fillColor: layerColorCode,
                                 color: limiteCouleur,  // Utiliser la couleur restaurée
-                                weight: 1,
+                                weight: 2,
                                 fillOpacity: 0.5
                             },
                             interactive: true,
@@ -2683,120 +2759,264 @@ async function searchDepartment() {
     const code = document.getElementById('deptInput').value.trim();
     if (!code) return;
 
-    // Si le département est déjà affiché, on le retire SIMPLEMENT
+    // 1. Vérifier si déjà présent
     if (activeDeptLayers[code]) {
-        map.removeLayer(activeDeptLayers[code]);
-        delete activeDeptLayers[code];
-        
-        // On retire l'état visuel du bouton
-        const btn = document.querySelector(`.btn-dept[onclick*="'${code}'"]`);
-        if (btn) btn.classList.remove('active');
-        return; // On s'arrête là : les communes dans selectedCommunes restent sur la carte
+        alert("Ce département est déjà affiché.");
+        return;
     }
 
     try {
-        const response = await fetch(`https://geo.api.gouv.fr/departements/${code}?fields=nom,code`);
-        if (!response.ok) throw new Error();
+        // D'abord, récupérer les informations du département
+        const deptResponse = await fetch(`https://geo.api.gouv.fr/departements/${code}`);
+        
+        if (!deptResponse.ok) {
+            throw new Error("Code département introuvable");
+        }
+        
+        const deptData = await deptResponse.json();
+        let nomDept = deptData.nom; // Récupère le nom du département (en majuscules)
+        
+        // Formater le nom avec seulement la première lettre en majuscule
+        nomDept = formatDepartmentName(nomDept);
+
+        // Ensuite, récupérer les communes du département
+        const response = await fetch(`https://geo.api.gouv.fr/departements/${code}/communes?format=geojson&geometry=contour&simplify=0.001`);
+        
+        if (!response.ok) {
+            throw new Error("Code introuvable");
+        }
+
         const data = await response.json();
 
-        // Créer le bouton
-        createDeptButton(data.code, data.nom);
+        // 3. Vérifier si l'API a renvoyé des données vides
+        if (!data.features || data.features.length === 0) {
+            throw new Error("Aucune donnée pour ce code");
+        }
+
+        // 4. Création du calque et du badge
+        const layer = L.geoJSON(data, {
+            style: {
+                color: "#34495e",
+                fillColor: "#34495e",
+                fillOpacity: 0.5,
+                weight: 1
+            },
+            onEachFeature: function(feature, layer) {
+                layer.on('click', function(e) {
+                    L.DomEvent.stopPropagation(e);
+                    addCommuneToList(feature.properties, layer);
+                });
+                
+                layer.bindTooltip(feature.properties.nom, { sticky: true, opacity: 0.8 });
+            }
+        }).addTo(map);
+
+        activeDeptLayers[code] = layer;
         
-        // Récupérer le bouton fraîchement créé
-        const btn = document.getElementById(`btn-dept-${data.code}`);
-        const picker = btn.querySelector('.dept-color-picker');
+        // Création du bouton visuel avec le nom formaté
+        createDeptButton(code, nomDept);
         
-        // Charger automatiquement les limites du département
-        await loadDeptBoundaries(data.code, btn, picker.value);
-        
-        document.getElementById('deptInput').value = "";
-    } catch (e) {
-        alert("Département introuvable. Vérifiez le code (ex: 03 pour l'Allier).");
+        // Ajuster la vue de la carte
+        map.fitBounds(layer.getBounds());
+        document.getElementById('deptInput').value = ""; // Vider le champ
+
+    } catch (error) {
+        console.error("Erreur:", error);
+        alert(`Département ${code} introuvable. Vérifiez le code (ex: 03 pour l'Allier).`);
     }
 }
 
-function createDeptButton(code, nom) {
-    const container = document.getElementById('dept-buttons-container');
+function formatDepartmentName(nom) {
+    return nom.split('-').map(part => {
+        part = part.trim();
+        return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+    }).join('-');
+}
+
+function openDeptSettings(code) {
+    const modal = document.getElementById('deptSettingsModal');
+    const layer = activeDeptLayers[code];
+    if (!layer) return;
+
+    document.getElementById('current-dept-code').value = code;
+    document.getElementById('dept-modal-title').innerText = `Réglages Dept. ${code}`;
     
-    // Créer le conteneur principal
-    const wrapper = document.createElement('div');
-    wrapper.className = 'btn-dept-container';
-    wrapper.setAttribute('data-dept', code);
+    // Récupération du style actuel
+    const layers = layer.getLayers ? layer.getLayers() : [];
+    const currentStyle = layers.length > 0 ? layers[0].options : layer.options;
+
+    const currentColor = currentStyle.fillColor || currentStyle.color || "#34495e";
+    const currentFillOpacity = currentStyle.fillOpacity !== undefined ? currentStyle.fillOpacity : 0.5;
+    const currentStrokeOpacity = currentStyle.opacity !== undefined ? currentStyle.opacity : 1.0;
+
+    // Remplissage de la modale
+    document.getElementById('modal-dept-color').value = currentColor;
     
-    // Créer le bouton
-    const btn = document.createElement('button');
-    btn.id = `btn-dept-${code}`;
-    btn.className = 'btn-dept active';
+    // Opacité Fond
+    document.getElementById('modal-dept-opacity-range').value = currentFillOpacity;
+    document.getElementById('modal-dept-opacity-val').innerText = currentFillOpacity;
     
-    // Sélecteur de couleur
-    const colorPicker = document.createElement('input');
-    colorPicker.type = 'color';
-    colorPicker.className = 'dept-color-picker';
-    colorPicker.value = '#3498db';
-    colorPicker.title = "Choisir la couleur des limites";
-    colorPicker.onclick = (e) => e.stopPropagation();
-    
-    colorPicker.onchange = () => {
-        if (activeDeptLayers[code]) {
-            // Mettre à jour la couleur de la couche du département
-            activeDeptLayers[code].setStyle({ 
-                color: colorPicker.value, 
-                fillColor: colorPicker.value 
-            });
-            
-            // Mettre à jour la couleur des limites de TOUTES les communes sélectionnées de ce département
-            selectedCommunes.forEach(com => {
-                const comDeptCode = com.code.substring(0, 2);
-                if (comDeptCode === code && com._mapLayer) {
-                    com._mapLayer.eachLayer(function(l) {
-                        l.setStyle({ color: colorPicker.value });
-                    });
-                }
-            });
-        }
+    // Opacité Contour
+    document.getElementById('modal-dept-stroke-opacity-range').value = currentStrokeOpacity;
+    document.getElementById('modal-dept-stroke-opacity-val').innerText = currentStrokeOpacity;
+
+    // Mise à jour des textes en temps réel
+    document.getElementById('modal-dept-opacity-range').oninput = function() {
+        document.getElementById('modal-dept-opacity-val').innerText = this.value;
+    };
+    document.getElementById('modal-dept-stroke-opacity-range').oninput = function() {
+        document.getElementById('modal-dept-stroke-opacity-val').innerText = this.value;
     };
 
-    colorPicker.addEventListener('input', () => {
-        // Mettre à jour la couleur des limites de TOUTES les communes du département
-        selectedCommunes.forEach(com => {
-            const comDeptCode = com.code.substring(0, 2);
-            if (comDeptCode === code && com._mapLayer) {
-                com._mapLayer.eachLayer(function(l) {
-                    l.setStyle({ color: colorPicker.value });
-                });
-            }
+    modal.style.display = 'flex';
+}
+
+function closeDeptModal() {
+    document.getElementById('deptSettingsModal').style.display = 'none';
+}
+
+function applyDeptSettings() {
+    const code = document.getElementById('current-dept-code').value;
+    const newColor = document.getElementById('modal-dept-color').value;
+    const newFillOpacity = parseFloat(document.getElementById('modal-dept-opacity-range').value);
+    const newStrokeOpacity = parseFloat(document.getElementById('modal-dept-stroke-opacity-range').value);
+    
+    if (activeDeptLayers[code]) {
+        activeDeptLayers[code].setStyle({
+            color: newColor,           // Couleur contour
+            fillColor: newColor,       // Couleur fond
+            opacity: newStrokeOpacity,  // Opacité contour (stroke)
+            fillOpacity: newFillOpacity // Opacité fond (fill)
         });
+
+        // Mise à jour des valeurs stockées dans le badge (pour compatibilité fonctions communes)
+        const btn = document.getElementById(`btn-dept-${code}`);
+        if (btn) {
+            btn.querySelector('.dept-color-picker').value = newColor;
+            document.querySelector(`.dept-opacity-${code}`).innerText = newFillOpacity;
+        }
+    }
+
+    // Mise à jour des couleurs des communes liées
+    selectedCommunes.forEach(com => {
+        if (com.code.startsWith(code) && com._mapLayer) {
+            com._mapLayer.setStyle({ color: newColor });
+        }
     });
 
-    // Texte du département
-    const textSpan = document.createElement('span');
-    textSpan.innerText = `${code} - ${nom}`;
-    textSpan.onclick = () => {
-        // Récupérer la couleur actuelle pour l'utiliser lors de l'activation
-        toggleDeptBoundaries(code, btn, colorPicker.value);
-    };
+    closeDeptModal();
+}
+function createDeptButton(code, nom) {
+    const container = document.getElementById('dept-buttons-container');
+    const div = document.createElement('div');
+    // On utilise flex pour aligner proprement tous les éléments sur une ligne
+    div.className = 'btn-dept-container'; 
+    div.id = `container-dept-${code}`;
+    div.style.display = "flex";
+    div.style.alignItems = "center";
+    div.style.marginBottom = "5px";
+    div.style.background = "#34495e";
+    div.style.color = "white";
+    div.style.borderRadius = "15px";
+    div.style.padding = "2px 10px";
+    div.style.boxShadow = "0 2px 5px rgba(0,0,0,0.2)";
 
-    btn.appendChild(colorPicker);
-    btn.appendChild(textSpan);
+    div.innerHTML = `
+        <div style="display: flex; align-items: center; cursor: default; flex-grow: 1;">
+            <span onclick="openDeptSettings('${code}')" style="cursor:pointer; margin-right:8px;" title="Réglages">✏️</span>
+            <span style="font-weight:bold; margin-right:5px;">${code}</span>
+            <span style="margin-right:10px;">- ${nom}</span>
+        </div>
+        
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="eye-dept-${code}" onclick="toggleDeptVisibility('${code}')" style="cursor:pointer;" title="Masquer/Afficher">👁️</span>
+            <span onclick="removeDepartment('${code}')" style="cursor:pointer; font-size: 14px;" title="Supprimer département">🗑️</span>
+        </div>
+
+        <input type="color" class="dept-color-picker" value="#34495e" style="display:none">
+        <span class="dept-opacity-${code}" style="display:none">0.5</span>
+    `;
     
-    // Bouton poubelle
-    const removeSpan = document.createElement('span');
-    removeSpan.className = 'btn-dept-remove';
-    removeSpan.innerHTML = ' 🗑️';
-    removeSpan.onclick = (e) => removeDeptButton(code, e);
-    
-    wrapper.appendChild(btn);
-    wrapper.appendChild(removeSpan);
-    container.appendChild(wrapper);
-    
-    // Ne pas charger automatiquement les limites - attendre le clic sur le bouton
+    container.appendChild(div);
     updateCounters();
 }
 
+
+function toggleDeptVisibility(code) {
+    const layer = activeDeptLayers[code];
+    const eyeSpan = document.getElementById(`eye-dept-${code}`);
+    
+    if (!layer) return;
+
+    if (map.hasLayer(layer)) {
+        // ACTION : MASQUER
+        map.removeLayer(layer);
+        eyeSpan.innerText = " 🚫"; 
+        eyeSpan.title = "Afficher";
+        <!-- eyeSpan.style.opacity = "0.3"; // On grise l'icône pour montrer l'inactivité -->
+    } else {
+        // ACTION : AFFICHER
+        map.addLayer(layer);
+        eyeSpan.innerText = "👁️";
+        eyeSpan.title = "Masquer";
+        eyeSpan.style.opacity = "1";
+    }
+}
+
+// Ajuster l'opacité du fond des communes d'un département
+function adjustDeptOpacity(code, delta) {
+    // Obtenir l'élément d'affichage de l'opacité
+    const opacitySpan = document.querySelector(`.dept-opacity-${code}`);
+    if (!opacitySpan) return;
+    
+    // Lire l'opacité actuelle du département
+    let deptOpacity = parseFloat(opacitySpan.innerText) || 0.5;
+    
+    // Calculer la nouvelle opacité du département (entre 0.1 et 1.0)
+    let newDeptOpacity = deptOpacity + delta;
+    newDeptOpacity = Math.max(0.1, Math.min(1.0, newDeptOpacity));
+    newDeptOpacity = Math.round(newDeptOpacity * 10) / 10;
+    
+    // Mettre à jour l'affichage
+    opacitySpan.innerText = newDeptOpacity.toFixed(1);
+    
+    // Calculer l'opacité des communes sélectionnées (département + 0.3, max 0.9)
+    let communeOpacity = newDeptOpacity + 0.2;
+    communeOpacity = Math.min(0.9, communeOpacity);
+    communeOpacity = Math.round(communeOpacity * 10) / 10;
+    
+    // Mettre à jour l'opacité de la couche du département si elle est active
+    if (activeDeptLayers[code]) {
+        activeDeptLayers[code].setStyle({ 
+            fillOpacity: newDeptOpacity
+        });
+    }
+    
+    // Mettre à jour l'opacité de toutes les communes sélectionnées de ce département
+    selectedCommunes.forEach(com => {
+        const comDeptCode = com.code.substring(0, 2);
+        if (comDeptCode === code && com._mapLayer) {
+            com._mapLayer.eachLayer(function(l) {
+                l.setStyle({ fillOpacity: communeOpacity });
+            });
+        }
+    });
+}
+
+
 async function loadDeptBoundaries(code, btn, selectedColor) {
-    const statusSpan = btn.querySelector('span');
+    const statusSpan = btn.querySelector('span:last-child');
     const originalText = statusSpan.innerText;
     statusSpan.innerText = "Chargement...";
+    
+    // Récupérer l'opacité actuelle du département
+    const opacitySpan = document.querySelector(`.dept-opacity-${code}`);
+    const deptOpacity = opacitySpan ? parseFloat(opacitySpan.innerText) : 0.5;
+    
+    // Calculer l'opacité pour les futures communes sélectionnées
+    let communeOpacity = deptOpacity + 0.3;
+    communeOpacity = Math.min(0.9, communeOpacity);
+    communeOpacity = Math.round(communeOpacity * 10) / 10;
     
     try {
         const geoUrl = `https://geo.api.gouv.fr/departements/${code}/communes?format=geojson&geometry=contour`;
@@ -2805,9 +3025,9 @@ async function loadDeptBoundaries(code, btn, selectedColor) {
 
         const layer = L.geoJSON(geojson, {
             style: {
-                color: selectedColor,  // Utiliser la couleur fournie
-                weight: 1,
-                fillOpacity: 0.1,
+                color: selectedColor,
+                weight: 2,
+                fillOpacity: deptOpacity, // Opacité du département
                 fillColor: selectedColor
             },
             interactive: true,
@@ -2822,18 +3042,19 @@ async function loadDeptBoundaries(code, btn, selectedColor) {
                 layer.on('click', function(e) {
                     L.DomEvent.stopPropagation(e);
                     
-                    const deptNom = btn.querySelector('span').innerText.split(' - ')[1] || code;
+                    const deptNom = btn.querySelector('span:last-child').innerText.split(' - ')[1] || code;
                     
                     const fakeLayerInstance = {
                         feature: feature
                     };
                     
+                    // Stocker l'opacité cible pour la commune
                     addCommuneToList({
                         code: feature.properties.code,
                         nom: feature.properties.nom,
                         departement: deptNom,
                         population: feature.properties.population || 'N/C'
-                    }, fakeLayerInstance);
+                    }, fakeLayerInstance, communeOpacity); // Passer l'opacité cible
                 });
             }
         }).addTo(map);
@@ -2864,7 +3085,16 @@ async function toggleDeptBoundaries(code, btn, selectedColor) {
         const picker = btn.querySelector('.dept-color-picker');
         const currentColor = picker ? picker.value : selectedColor;
         
-        const statusSpan = btn.querySelector('span');
+        // Récupérer l'opacité actuelle du département
+        const opacitySpan = document.querySelector(`.dept-opacity-${code}`);
+        const deptOpacity = opacitySpan ? parseFloat(opacitySpan.innerText) : 0.5;
+        
+        // Calculer l'opacité pour les futures communes sélectionnées
+        let communeOpacity = deptOpacity + 0.3;
+        communeOpacity = Math.min(0.9, communeOpacity);
+        communeOpacity = Math.round(communeOpacity * 10) / 10;
+        
+        const statusSpan = btn.querySelector('span:last-child');
         const originalText = statusSpan.innerText;
         statusSpan.innerText = "Chargement...";
         
@@ -2875,9 +3105,9 @@ async function toggleDeptBoundaries(code, btn, selectedColor) {
 
             const layer = L.geoJSON(geojson, {
                 style: {
-                    color: currentColor,  // Utiliser la couleur actuelle du sélecteur
-                    weight: 1,
-                    fillOpacity: 0.1,
+                    color: currentColor,
+                    weight: 2,
+                    fillOpacity: deptOpacity, // Opacité du département
                     fillColor: currentColor
                 },
                 interactive: true,
@@ -2892,18 +3122,19 @@ async function toggleDeptBoundaries(code, btn, selectedColor) {
                     layer.on('click', function(e) {
                         L.DomEvent.stopPropagation(e);
                         
-                        const deptNom = btn.querySelector('span').innerText.split(' - ')[1] || code;
+                        const deptNom = btn.querySelector('span:last-child').innerText.split(' - ')[1] || code;
                         
                         const fakeLayerInstance = {
                             feature: feature
                         };
                         
+                        // Stocker l'opacité cible pour la commune
                         addCommuneToList({
                             code: feature.properties.code,
                             nom: feature.properties.nom,
                             departement: deptNom,
                             population: feature.properties.population || 'N/C'
-                        }, fakeLayerInstance);
+                        }, fakeLayerInstance, communeOpacity); // Passer l'opacité cible
                     });
                 }
             }).addTo(map);
@@ -2924,22 +3155,14 @@ async function toggleDeptBoundaries(code, btn, selectedColor) {
 }
 
 
-function removeDeptButton(code, event) {
-    // On empêche le clic de déclencher aussi la recherche du département
-    event.stopPropagation();
-
-    // 1. Supprimer la couche de la carte si elle est affichée
+function removeDepartment(code) {
     if (activeDeptLayers[code]) {
         map.removeLayer(activeDeptLayers[code]);
         delete activeDeptLayers[code];
     }
-
-    // 2. Supprimer le bouton de l'interface
-    const wrapper = document.querySelector(`.btn-dept-container[data-dept="${code}"]`);
-    if (wrapper) {
-        wrapper.remove();
-		updateCounters();
-    }
+    const container = document.getElementById(`container-dept-${code}`);
+    if (container) container.remove();
+    updateCounters();
 }
 
 
@@ -3152,7 +3375,6 @@ function updateCounters() {
     document.getElementById('commune-count').textContent = communeCount;
 }
 
-// Activer/désactiver le mode "Pointer sur la carte"
 // Activer/désactiver le mode "Pointer sur la carte"
 function toggleMapPicker() {
     mapPickerActive = !mapPickerActive;
@@ -3734,7 +3956,7 @@ function openHelpInNewWindow() {
     </div>
 
     <div class="footer">
-        <p>Version : 10/03/2026 - J-F D, Lyc&eacute;e Agricole du Bourbonnais</p>
+        <p>Version : 19/03/2026 - J-F D, Lyc&eacute;e Agricole du Bourbonnais</p>
 		<small>Outil en HTML Javascript créé dans le cadre d'une expérimentation de Programmation Assistée par Itelligence Artificielle.</small>
     </div>
 
