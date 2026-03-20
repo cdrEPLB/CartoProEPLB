@@ -403,6 +403,14 @@
         </div>
 
         <!-- Boutons de tri -->
+        <div style="display: flex; gap: 4px; margin: 5px 5px 2px 5px; align-items: center;">
+            <input type="text" id="pointSearchInput" placeholder="🔍 Rechercher un point..."
+                   oninput="updateSidebar()"
+                   style="flex:1; padding:5px 8px; border:1px solid #ccc; border-radius:20px; font-size:0.85rem; outline:none;">
+            <button onclick="document.getElementById('pointSearchInput').value=''; updateSidebar();"
+                    title="Effacer la recherche"
+                    style="background:none; border:none; cursor:pointer; font-size:1rem; color:#999; padding:2px 4px;">✕</button>
+        </div>
         <div style="display: flex; gap: 3px; margin-top: 5px; flex-wrap: wrap;">
             <button class="btn-sort" onclick="sortLocations('titre', 'asc', this)" style="background:#34495e; color:white;" title="Trier par titre (A à Z)">
                 <span>📝<br>▲</span>
@@ -436,6 +444,16 @@
             <div id="dept-buttons-container"></div>
         </div>  
         
+        <!-- Recherche de commune -->
+        <div style="display: flex; gap: 4px; margin: 5px 5px 2px 5px; align-items: center;">
+            <input type="text" id="communeSearchInput" placeholder="🔍 Rechercher une commune..." 
+                   oninput="updateCommunesUI()"
+                   style="flex:1; padding:5px 8px; border:1px solid #ccc; border-radius:20px; font-size:0.85rem; outline:none;">
+            <button onclick="document.getElementById('communeSearchInput').value=''; updateCommunesUI();" 
+                    title="Effacer la recherche"
+                    style="background:none; border:none; cursor:pointer; font-size:1rem; color:#999; padding:2px 4px;">✕</button>
+        </div>
+
         <!-- Boutons de tri pour les communes -->
         <div style="display: flex; gap: 2px; margin: 5px; flex-wrap: wrap; justify-content: center;">
             <button class="btn-sort" onclick="sortCommunes('nom', 'asc', this)" style="background:#34495e; color:white; flex: 1; font-size:0.7rem;" title="Trier par commune (A à Z)">
@@ -738,6 +756,73 @@
     </div>
 </div>
 
+<!-- Modale d'édition des informations d'une commune -->
+<div id="communeEditModal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
+    <div class="modal-content" style="width: 480px;">
+        <h3>✏️ Modifier la commune</h3>
+        <input type="hidden" id="commune-edit-index">
+
+        <!-- Informations générales -->
+        <div style="background:#f0f4f8; border-radius:8px; padding:10px; margin-bottom:15px;">
+            <div style="font-size:0.75rem; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">INFORMATIONS GÉNÉRALES</div>
+            <div class="form-group">
+                <label>Nom de la commune</label>
+                <input type="text" id="commune-edit-nom">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <div class="form-group" style="flex:1;">
+                    <label>Code INSEE</label>
+                    <input type="text" id="commune-edit-code" readonly style="background:#eee; color:#888;">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>Code Postal</label>
+                    <input type="text" id="commune-edit-cp" placeholder="ex: 03000">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Département</label>
+                <input type="text" id="commune-edit-departement">
+            </div>
+        </div>
+
+        <!-- Données démographiques & géographiques -->
+        <div style="background:#f0f4f8; border-radius:8px; padding:10px; margin-bottom:15px;">
+            <div style="font-size:0.75rem; font-weight:bold; color:#7f8c8d; margin-bottom:8px;">DONNÉES DÉMOGRAPHIQUES & GÉOGRAPHIQUES</div>
+            <div style="display: flex; gap: 10px;">
+                <div class="form-group" style="flex:1;">
+                    <label>Population (hab.)</label>
+                    <input type="number" id="commune-edit-population" min="0">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>Superficie (km²)</label>
+                    <input type="number" id="commune-edit-superficie" min="0" step="0.01" placeholder="ex: 12.5">
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <div class="form-group" style="flex:1;">
+                    <label>Altitude (m)</label>
+                    <input type="number" id="commune-edit-altitude" placeholder="ex: 320">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>Densité (hab/km²)</label>
+                    <input type="number" id="commune-edit-densite" step="0.1" placeholder="calculée auto">
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes libres -->
+        <div class="form-group">
+            <label>Notes / Informations complémentaires</label>
+            <textarea id="commune-edit-notes" rows="3" style="padding:8px; border:1px solid #ddd; border-radius:4px; font-size:0.95rem; resize:vertical; width:100%; box-sizing:border-box;" placeholder="Informations libres sur la commune..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeCommuneEditModal()">Annuler</button>
+            <button class="btn btn-save" onclick="saveCommuneEdit()">Enregistrer</button>
+        </div>
+    </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     // Initialisation de la carte
@@ -784,7 +869,7 @@ L.control.layers(baseMaps).addTo(map);
 
 // NOUVEAU COPYRIGHT CENTRÉ 
 const copyrightDiv = L.DomUtil.create('div', 'map-copyright', document.getElementById('map'));
-copyrightDiv.innerHTML = '©️ OpenStreetMap contributors | ©️ 19/03/2026 Lycée Agricole du Bourbonnais';
+copyrightDiv.innerHTML = '©️ OpenStreetMap contributors | ©️ 20/03/2026 Lycée Agricole du Bourbonnais';
 
 
     // Variables globales
@@ -925,12 +1010,90 @@ function focusCommune(index) {
     }
 }
 
+// --- MODALE ÉDITION COMMUNE ---
+function openCommuneEditModal(index) {
+    const com = selectedCommunes[index];
+    if (!com) return;
+
+    document.getElementById('commune-edit-index').value = index;
+    document.getElementById('commune-edit-nom').value = com.nom || '';
+    document.getElementById('commune-edit-code').value = com.code || '';
+    document.getElementById('commune-edit-cp').value = com.cp || '';
+    document.getElementById('commune-edit-departement').value = com.departement || '';
+    document.getElementById('commune-edit-population').value = com.population || '';
+    document.getElementById('commune-edit-superficie').value = com.superficie || '';
+    document.getElementById('commune-edit-altitude').value = com.altitude || '';
+    document.getElementById('commune-edit-densite').value = com.densite || '';
+    document.getElementById('commune-edit-notes').value = com.notes || '';
+
+    // Calcul auto de la densité si superficie et population connues
+    const popInput = document.getElementById('commune-edit-population');
+    const supInput = document.getElementById('commune-edit-superficie');
+    const densInput = document.getElementById('commune-edit-densite');
+    function calcDensite() {
+        const pop = parseFloat(popInput.value);
+        const sup = parseFloat(supInput.value);
+        if (pop > 0 && sup > 0) {
+            densInput.value = (pop / sup).toFixed(1);
+        }
+    }
+    popInput.oninput = calcDensite;
+    supInput.oninput = calcDensite;
+
+    document.getElementById('communeEditModal').style.display = 'flex';
+}
+
+function closeCommuneEditModal() {
+    document.getElementById('communeEditModal').style.display = 'none';
+}
+
+function saveCommuneEdit() {
+    const index = parseInt(document.getElementById('commune-edit-index').value);
+    const com = selectedCommunes[index];
+    if (!com) return;
+
+    com.nom = document.getElementById('commune-edit-nom').value.trim() || com.nom;
+    com.cp = document.getElementById('commune-edit-cp').value.trim();
+    com.departement = document.getElementById('commune-edit-departement').value.trim();
+    com.population = parseInt(document.getElementById('commune-edit-population').value) || com.population;
+    com.superficie = parseFloat(document.getElementById('commune-edit-superficie').value) || '';
+    com.altitude = parseFloat(document.getElementById('commune-edit-altitude').value) || '';
+    com.densite = parseFloat(document.getElementById('commune-edit-densite').value) || '';
+    com.notes = document.getElementById('commune-edit-notes').value.trim();
+
+    // Mettre à jour le tooltip sur la carte
+    if (com._mapLayer) {
+        com._mapLayer.unbindTooltip();
+        const supStr = com.superficie ? ` • ${com.superficie} km²` : '';
+        const cpStr = com.cp ? ` • CP : ${com.cp}` : '';
+        const notesStr = com.notes ? `<br><em>${com.notes}</em>` : '';
+        com._mapLayer.bindTooltip(
+            `<b>${com.nom}</b> (${com.code})${cpStr}${supStr}<br>` +
+            `👥 ${com.population ? com.population.toLocaleString() : 'N/C'} hab.` +
+            notesStr,
+            { sticky: true }
+        );
+    }
+
+    closeCommuneEditModal();
+    updateCommunesUI();
+}
+
 // Mise à jour de l'UI des communes
 function updateCommunesUI() {
     const list = document.getElementById('selectedCommunesList');
     list.innerHTML = "";
 
+    const searchInput = document.getElementById('communeSearchInput');
+    const filter = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
     selectedCommunes.forEach((com, index) => {
+        // Filtrage par recherche (nom, code INSEE, département, CP)
+        if (filter) {
+            const haystack = [com.nom, com.code, com.departement, com.cp].join(' ').toLowerCase();
+            if (!haystack.includes(filter)) return;
+        }
+
         const layer = communeLayers.find(l => l.id === com.layerId) || communeLayers[0];
         
         // Récupérer le code du département (2 premiers chiffres du code commune)
@@ -1012,8 +1175,9 @@ function updateCommunesUI() {
         div.innerHTML = `
             <div class="commune-info">
                 <strong>🏘️ ${com.nom}</strong><br>
-                <small style="color:#666;">🗺️ ${com.departement || 'Département inconnu'}</small><br>
-                <small>👥 ${com.population ? com.population.toLocaleString() : 'N/C'} hab.</small>
+                <small style="color:#666;">🗺️ ${com.departement || 'Département inconnu'}${com.cp ? ' • CP : ' + com.cp : ''}</small><br>
+                <small>👥 ${com.population ? com.population.toLocaleString() : 'N/C'} hab.${com.superficie ? ' • ' + com.superficie + ' km²' : ''}${com.altitude ? ' • ' + com.altitude + ' m alt.' : ''}</small>
+                ${com.notes ? `<br><small style="color:#888; font-style:italic;">📝 ${com.notes}</small>` : ''}
                 <div>
                     <span class="cat-tag" style="background:${layer.color};" 
                           onclick="event.stopPropagation(); openLayersModalForCommune(${index})">
@@ -1021,8 +1185,9 @@ function updateCommunesUI() {
                     </span>
                 </div>
             </div>
-            <div style="display: flex; gap: 5px;">
+            <div style="display: flex; flex-direction: column; gap: 5px; align-items: center;">
                 <button class="icon-btn eye-btn" onclick="toggleCommuneVisibility(${index})" title="${eyeTitle}" style="font-size: 1.2rem;">${eyeIcon}</button>
+                <button class="icon-btn" onclick="openCommuneEditModal(${index})" title="Modifier la commune" style="font-size: 1.1rem;">✏️</button>
                 <button class="icon-btn" onclick="removeCommune(${index})" style="color:var(--danger)" title="Supprimer la commune">🗑️</button>
             </div>
         `;
@@ -1225,12 +1390,12 @@ function removeCommune(index) {
                 updateCommunesUI();
             }
         } else {
-            const id = Number(document.getElementById('layer-point-id').value);
+            const id = document.getElementById('layer-point-id').value;
             if (!id) {
                 alert("Aucun point sélectionné.");
                 return;
             }
-            const loc = savedLocations.find(l => l.id === id);
+            const loc = savedLocations.find(l => String(l.id) === String(id));
             if (loc) {
                 loc.layerId = selectedLayerForPoint;
                 refreshUI();
@@ -1372,6 +1537,7 @@ async function reverseGeocode(lat, lon) {
 function renderPointOnMap(loc) {
     const layer = layers.find(l => l.id === loc.layerId);
     if (!layer || !layer.visible) return;
+    if (loc.visible === false) return;
 
     const color = categories[loc.categorie] || "#333";
     const iconType = loc.iconType || 'circle';
@@ -1501,44 +1667,81 @@ function renderPointOnMap(loc) {
     // --- SIDEBAR ---
     function updateSidebar() {
         const list = document.getElementById('historyList');
+        const filter = (document.getElementById('pointSearchInput')?.value || '').trim().toLowerCase();
+
         const visibleCount = savedLocations.filter(loc => {
             const layer = layers.find(l => l.id === loc.layerId);
-            return layer && layer.visible;
+            return layer && layer.visible && loc.visible !== false;
         }).length;
         document.getElementById('count-label').innerText = `${visibleCount} point${visibleCount > 1 ? 's' : ''} affiché${visibleCount > 1 ? 's' : ''}`;
         list.innerHTML = "";
-        
+
         savedLocations.forEach((loc) => {
             const layer = layers.find(l => l.id === loc.layerId);
-            if (!layer || !layer.visible) return;
+            if (!layer) return;
+
+            // Filtrage recherche : tous les champs texte
+            if (filter) {
+                const haystack = [
+                    loc.titre, loc.numero, loc.rue, loc.cp, loc.ville,
+                    loc.categorie, layer.name,
+                    String(loc.lat), String(loc.lon)
+                ].join(' ').toLowerCase();
+                if (!haystack.includes(filter)) return;
+            }
+
+            const isHiddenByLayer = !layer.visible;
+            const isPointVisible = loc.visible !== false;
+            const eyeIcon = isPointVisible ? '👁️' : '🚫';
+            const eyeTitle = isPointVisible ? 'Masquer ce point' : 'Afficher ce point';
 
             const div = document.createElement('div');
             div.className = "location-item";
-			div.style.borderLeft = `5px solid ${categories[loc.categorie] || '#ccc'}`;
-            div.innerHTML = `
-                <div class="item-content" onclick="focusPoint(${loc.id})">
-                    <span class="title-text">📝 ${loc.titre}</span><br>
-                    <small>${loc.numero} ${loc.rue}<br>${loc.cp} ${loc.ville}</small><br>
-                    <span style="display: flex; align-items: center;  flex-wrap: wrap;">
-                        <div>
-                            <span style="font-size:0.8rem; color:#555;">📁Couche :</span>
-                            <span class="cat-tag" style="background:${layer.color}; cursor:pointer;" onclick="event.stopPropagation(); openLayersModalForPoint(${loc.id})">${layer.name}</span>
-                        </div>
+            div.style.borderLeft = `5px solid ${categories[loc.categorie] || '#ccc'}`;
+            if (!isPointVisible || isHiddenByLayer) div.style.opacity = '0.45';
 
-                        <div>
-                            <span style="font-size:0.8rem; color:#555;">🏷️Cat. :</span>
-                            <span class="cat-tag" style="background:${categories[loc.categorie] || '#ccc'}" onclick="event.stopPropagation(); openCategoryModal(${loc.id})">${loc.categorie}</span>
-                        </div>
-  
-                    </span>
-                </div>
-                <div class="actions">
-                    <button class="icon-btn" onclick="openEditModal(${loc.id})" title="Modifier">✏️</button>
-                    <button class="icon-btn" onclick="editCircle(${loc.id})" title="Cercle">⭕</button>
-                    <button class="icon-btn" onclick="openIsochroneModal(${loc.id})" title="Isochrone">⏱️</button>
-                    <button class="icon-btn" onclick="deletePoint(${loc.id})" style="color:var(--danger)" title="Supprimer">🗑️</button>
-                </div>
-            `;
+            // --- Contenu textuel ---
+            const content = document.createElement('div');
+            content.className = 'item-content';
+            content.innerHTML = `
+                <span class="title-text">📝 ${loc.titre}</span><br>
+                <small>${loc.numero} ${loc.rue}<br>${loc.cp} ${loc.ville}</small><br>
+                <span style="display:flex; align-items:center; flex-wrap:wrap;">
+                    <div>
+                        <span style="font-size:0.8rem; color:#555;">📁Couche :</span>
+                        <span class="cat-tag layer-tag" style="background:${layer.color}; cursor:pointer;">${layer.name}</span>
+                    </div>
+                    <div>
+                        <span style="font-size:0.8rem; color:#555;">🏷️Cat. :</span>
+                        <span class="cat-tag cat-tag-btn" style="background:${categories[loc.categorie] || '#ccc'}">${loc.categorie}</span>
+                    </div>
+                </span>`;
+            content.addEventListener('click', () => focusPoint(loc.id));
+            content.querySelector('.layer-tag').addEventListener('click', e => { e.stopPropagation(); openLayersModalForPoint(loc.id); });
+            content.querySelector('.cat-tag-btn').addEventListener('click', e => { e.stopPropagation(); openCategoryModal(loc.id); });
+
+            // --- Boutons d'action ---
+            const actions = document.createElement('div');
+            actions.className = 'actions';
+
+            function makeBtn(icon, title, handler, extraStyle) {
+                const btn = document.createElement('button');
+                btn.className = 'icon-btn';
+                btn.innerHTML = icon;
+                btn.title = title;
+                if (extraStyle) btn.style.cssText = extraStyle;
+                btn.addEventListener('click', e => { e.stopPropagation(); handler(); });
+                return btn;
+            }
+
+            const eyeBtn = makeBtn(eyeIcon, eyeTitle, () => togglePointVisibility(loc.id), 'font-size:1.2rem;');
+            const editBtn = makeBtn('✏️', 'Modifier', () => openEditModal(loc.id));
+            const circleBtn = makeBtn('⭕', 'Cercle', () => editCircle(loc.id));
+            const isoBtn = makeBtn('⏱️', 'Isochrone', () => openIsochroneModal(loc.id));
+            const delBtn = makeBtn('🗑️', 'Supprimer', () => deletePoint(loc.id), 'color:var(--danger)');
+
+            actions.append(eyeBtn, editBtn, circleBtn, isoBtn, delBtn);
+            div.append(content, actions);
             list.appendChild(div);
         });
     }
@@ -1546,6 +1749,13 @@ function renderPointOnMap(loc) {
     function openLayersModalForPoint(id) {
         document.getElementById('layer-point-id').value = id;
         openLayersModal('points');
+    }
+
+    function togglePointVisibility(id) {
+        const loc = savedLocations.find(l => String(l.id) === String(id));
+        if (!loc) return;
+        loc.visible = loc.visible === false ? true : false;
+        refreshUI();
     }
 
     // --- FONCTIONS DE TRI ---
@@ -1649,7 +1859,7 @@ function sortCommunes(critere, ordre, btn) {
 
     // --- MODALE ÉDITION POINT ---
 function openEditModal(id) {
-    const loc = savedLocations.find(l => l.id === id);
+    const loc = savedLocations.find(l => String(l.id) === String(id));
     if(!loc) return;
     
     document.getElementById('edit-id').value = loc.id;
@@ -1713,8 +1923,8 @@ function openEditModal(id) {
     }
 
 function saveModalChanges() {
-    const id = Number(document.getElementById('edit-id').value);
-    const loc = savedLocations.find(l => l.id === id);
+    const id = document.getElementById('edit-id').value;
+    const loc = savedLocations.find(l => String(l.id) === String(id));
     if (loc) {
         loc.titre = document.getElementById('edit-titre').value;
         loc.numero = document.getElementById('edit-numero').value;
@@ -1740,7 +1950,7 @@ function saveModalChanges() {
 
     // --- GESTION DES CATÉGORIES ---
     function openCategoryModal(id) {
-        const loc = savedLocations.find(l => l.id === id);
+        const loc = savedLocations.find(l => String(l.id) === String(id));
         if (!loc) return;
         document.getElementById('category-point-id').value = id;
         refreshCategoryList();
@@ -1829,8 +2039,8 @@ function saveModalChanges() {
 
     function applySelectedCategory() {
         if (!selectedCategoryForPoint) { alert("Sélectionnez une catégorie."); return; }
-        const id = Number(document.getElementById('category-point-id').value);
-        const loc = savedLocations.find(l => l.id === id);
+        const id = document.getElementById('category-point-id').value;
+        const loc = savedLocations.find(l => String(l.id) === String(id));
         if (loc) {
             loc.categorie = selectedCategoryForPoint;
             refreshUI();
@@ -1876,7 +2086,7 @@ function saveModalChanges() {
 
     // --- CERCLES ---
     function editCircle(id) {
-        const loc = savedLocations.find(l => l.id === id);
+        const loc = savedLocations.find(l => String(l.id) === String(id));
         if (!loc) return;
         document.getElementById('circle-point-id').value = id;
         if (loc.circle) {
@@ -1894,8 +2104,8 @@ function saveModalChanges() {
     }
 
     function saveCircle() {
-        const id = Number(document.getElementById('circle-point-id').value);
-        const loc = savedLocations.find(l => l.id === id);
+        const id = document.getElementById('circle-point-id').value;
+        const loc = savedLocations.find(l => String(l.id) === String(id));
         if (!loc) return;
         const radiusKm = parseFloat(document.getElementById('circle-radius').value);
         const color = document.getElementById('circle-color').value;
@@ -1909,8 +2119,8 @@ function saveModalChanges() {
     }
 
     function deleteCircle() {
-        const id = Number(document.getElementById('circle-point-id').value);
-        const loc = savedLocations.find(l => l.id === id);
+        const id = document.getElementById('circle-point-id').value;
+        const loc = savedLocations.find(l => String(l.id) === String(id));
         if (loc) {
             delete loc.circle;
             refreshUI();
@@ -1920,7 +2130,7 @@ function saveModalChanges() {
 
     // --- ISOCHRONES ---
     function openIsochroneModal(id) {
-        const loc = savedLocations.find(l => l.id === id);
+        const loc = savedLocations.find(l => String(l.id) === String(id));
         if (!loc) return;
         document.getElementById('isochrone-point-id').value = id;
         if (loc.isochrone) {
@@ -1941,8 +2151,8 @@ function saveModalChanges() {
     }
 
     async function calculateIsochrone() {
-        const id = Number(document.getElementById('isochrone-point-id').value);
-        const loc = savedLocations.find(l => l.id === id);
+        const id = document.getElementById('isochrone-point-id').value;
+        const loc = savedLocations.find(l => String(l.id) === String(id));
         if (!loc) return;
 
         const mode = document.getElementById('isochrone-mode').value;
@@ -2005,8 +2215,8 @@ function saveModalChanges() {
     }
 
     function deleteIsochrone() {
-        const id = Number(document.getElementById('isochrone-point-id').value);
-        const loc = savedLocations.find(l => l.id === id);
+        const id = document.getElementById('isochrone-point-id').value;
+        const loc = savedLocations.find(l => String(l.id) === String(id));
         if (loc) {
             delete loc.isochrone;
             refreshUI();
@@ -2040,7 +2250,7 @@ function refreshUI() {
 }
 
 function focusPoint(id) {
-    const loc = savedLocations.find(l => l.id === id);
+    const loc = savedLocations.find(l => String(l.id) === String(id));
     if (!loc) return;
     
     map.setView([loc.lat, loc.lon], 15);
@@ -2086,6 +2296,7 @@ async function exportToExcel() {
             "Type d'icône": l.iconType || 'circle',
             "Emoji": l.emoji || '😊',
             "Popup toujours visible": l.popupAlwaysOn ? "true" : "false",
+            "Point visible": l.visible === false ? "false" : "true",
             "Rayon cercle (km)": l.circle ? l.circle.radiusKm : "",
             "Couleur cercle": l.circle ? l.circle.color : "",
             "Isochrone": l.isochrone ? JSON.stringify(l.isochrone) : ""
@@ -2104,7 +2315,12 @@ async function exportToExcel() {
             "Couche": layer.name,
             "Couleur couche": layer.color,
             "Couleur limite": currentStyle.color || "#27ae60",
-            "Opacité": currentStyle.fillOpacity || 0.5
+            "Opacité": currentStyle.fillOpacity || 0.5,
+            "Code Postal": c.cp || "",
+            "Superficie (km²)": c.superficie || "",
+            "Altitude (m)": c.altitude || "",
+            "Densité (hab/km²)": c.densite || "",
+            "Notes": c.notes || ""
         };
     });
 
@@ -2221,7 +2437,8 @@ async function importFromExcel(event) {
                         layerId: 'default', // Par défaut, sera ajusté si la couche existe
                         iconType: row["Type d'icône"] || "circle",
                         emoji: row["Emoji"] || "😊",
-                        popupAlwaysOn: row["Popup toujours visible"] === "true"
+                        popupAlwaysOn: row["Popup toujours visible"] === "true",
+                        visible: row["Point visible"] !== "false"
                     };
 
                     // Restauration du cercle
@@ -2236,49 +2453,12 @@ async function importFromExcel(event) {
                 });
             }
 
-            // 2. IMPORT DES COMMUNES (Feuille "Communes")
-            if (workbook.SheetNames.includes("Communes")) {
-                const ws = workbook.Sheets["Communes"];
-                const json = XLSX.utils.sheet_to_json(ws);
-
-                // Nettoyage communes actuelles
-                selectedCommunes.forEach(c => { if (c._mapLayer) map.removeLayer(c._mapLayer); });
-                selectedCommunes = [];
-
-                for (const row of json) {
-                    const code = row["Code INSEE"];
-                    if (!code) continue;
-
-                    try {
-                        const resp = await fetch(`https://geo.api.gouv.fr/communes/${code}?format=geojson&geometry=contour`);
-                        const data = await resp.json();
-                        
-                        const color = row["Couleur limite"] || "#27ae60";
-                        const opacity = parseFloat(row["Opacité"]) || 0.5;
-
-                        const layer = L.geoJSON(data, {
-                            style: { color: color, fillColor: color, fillOpacity: opacity, weight: 2 }
-                        }).addTo(map);
-
-                        selectedCommunes.push({
-                            code: code,
-                            nom: row["Nom"],
-                            departement: row["Département"],
-                            population: row["Population"],
-                            layerId: 'com-default',
-                            _mapLayer: layer,
-                            visible: true
-                        });
-                    } catch (err) { console.error("Erreur commune:", code); }
-                }
-            }
-
-            // 3. IMPORT DES DÉPARTEMENTS (Feuille "Départements")
+            // 3. IMPORT DES DÉPARTEMENTS EN PREMIER (pour avoir les contours disponibles)
             if (workbook.SheetNames.includes("Départements")) {
                 const ws = workbook.Sheets["Départements"];
                 const json = XLSX.utils.sheet_to_json(ws);
 
-                // Nettoyage départements
+                // Nettoyage départements existants
                 Object.keys(activeDeptLayers).forEach(code => {
                     map.removeLayer(activeDeptLayers[code]);
                 });
@@ -2289,8 +2469,95 @@ async function importFromExcel(event) {
                     const code = row["Code département"];
                     const nom = row["Nom département"];
                     if (code && row["Actif"] === "true") {
-                        // On simule l'ajout pour recréer le calque et le badge
                         await addDepartmentByCode(code, nom, row["Couleur limites"], parseFloat(row["Opacité"]));
+                    }
+                }
+            }
+
+            // 2. IMPORT DES COMMUNES : on cherche le contour dans les calques déjà chargés
+            if (workbook.SheetNames.includes("Communes")) {
+                const ws = workbook.Sheets["Communes"];
+                const json = XLSX.utils.sheet_to_json(ws);
+
+                // Nettoyage communes actuelles
+                selectedCommunes.forEach(c => { if (c._mapLayer) map.removeLayer(c._mapLayer); });
+                selectedCommunes = [];
+
+                for (const row of json) {
+                    const code = String(row["Code INSEE"] || "").trim();
+                    if (!code) continue;
+
+                    const color = row["Couleur limite"] || "#27ae60";
+                    const opacity = parseFloat(row["Opacité"]) || 0.5;
+
+                    // Chercher le feature dans le calque département déjà chargé
+                    const deptCode = code.substring(0, 2);
+                    let foundFeature = null;
+                    let foundLayer = null;
+
+                    if (activeDeptLayers[deptCode]) {
+                        activeDeptLayers[deptCode].eachLayer(function(l) {
+                            if (l.feature && l.feature.properties && String(l.feature.properties.code) === code) {
+                                foundFeature = l.feature;
+                                foundLayer = l;
+                            }
+                        });
+                    }
+
+                    if (foundFeature && foundLayer) {
+                        // Créer la couche commune à partir du contour déjà en mémoire
+                        const communeLayer = L.geoJSON(foundFeature, {
+                            style: { color: color, fillColor: color, fillOpacity: opacity, weight: 2, dashArray: '3' },
+                            interactive: true
+                        }).addTo(map);
+                        communeLayer.bindTooltip(`<b>${row["Nom"]}</b> (${code})`, { sticky: true });
+
+                        selectedCommunes.push({
+                            code: code,
+                            nom: row["Nom"],
+                            departement: row["Département"],
+                            population: row["Population"],
+                            cp: row["Code Postal"] || "",
+                            superficie: row["Superficie (km²)"] || "",
+                            altitude: row["Altitude (m)"] || "",
+                            densite: row["Densité (hab/km²)"] || "",
+                            notes: row["Notes"] || "",
+                            layerId: 'com-default',
+                            _mapLayer: communeLayer,
+                            visible: true
+                        });
+                    } else {
+                        // Repli : tenter l'API individuelle (avec timeout)
+                        try {
+                            const controller = new AbortController();
+                            const timeout = setTimeout(() => controller.abort(), 8000);
+                            const resp = await fetch(
+                                `https://geo.api.gouv.fr/communes/${code}?format=geojson&geometry=contour`,
+                                { signal: controller.signal }
+                            );
+                            clearTimeout(timeout);
+                            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                            const data = await resp.json();
+                            const communeLayer = L.geoJSON(data, {
+                                style: { color: color, fillColor: color, fillOpacity: opacity, weight: 2 }
+                            }).addTo(map);
+                            selectedCommunes.push({
+                                code: code,
+                                nom: row["Nom"],
+                                departement: row["Département"],
+                                population: row["Population"],
+                                cp: row["Code Postal"] || "",
+                                superficie: row["Superficie (km²)"] || "",
+                                altitude: row["Altitude (m)"] || "",
+                                densite: row["Densité (hab/km²)"] || "",
+                                notes: row["Notes"] || "",
+                                layerId: 'com-default',
+                                _mapLayer: communeLayer,
+                                visible: true
+                            });
+                        } catch (err) {
+                            console.warn(`Commune ${code} (${row["Nom"]}) non importée :`, err.message);
+                        }
                     }
                 }
             }
@@ -2313,20 +2580,32 @@ async function importFromExcel(event) {
 async function addDepartmentByCode(code, nom, color, opacity) {
     try {
         const resp = await fetch(`https://geo.api.gouv.fr/departements/${code}/communes?format=geojson&geometry=contour&simplify=0.001`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
-        
+
+        const deptColor = color || "#34495e";
+        const deptOpacity = (opacity !== undefined && !isNaN(opacity)) ? opacity : 0.5;
+
         const layer = L.geoJSON(data, {
-            style: { color: color || "#34495e", fillColor: color || "#34495e", fillOpacity: opacity || 0.5, weight: 1 }
+            style: { color: deptColor, fillColor: deptColor, fillOpacity: deptOpacity, weight: 1 },
+            onEachFeature: function(feature, fLayer) {
+                fLayer.on('click', function(e) {
+                    L.DomEvent.stopPropagation(e);
+                    addCommuneToList(feature.properties, fLayer);
+                });
+                fLayer.bindTooltip(feature.properties.nom, { sticky: true, opacity: 0.8 });
+            }
         }).addTo(map);
+        layer.bringToBack();
 
         activeDeptLayers[code] = layer;
-        createDeptButton(code, nom); // Recrée le badge dans la barre latérale
-        
+        createDeptButton(code, nom || ("Départ. " + code));
+
         // Appliquer la couleur au picker du badge
         const picker = document.querySelector(`#container-dept-${code} .dept-color-picker`);
-        if (picker) picker.value = color;
-        
-    } catch (e) { console.error("Erreur import département", code); }
+        if (picker) picker.value = deptColor;
+
+    } catch (e) { console.error("Erreur import département", code, e); }
 }
 
 
@@ -2566,8 +2845,8 @@ async function addDepartmentByCode(code, nom, color, opacity) {
             return;
         }
 
-        const startLoc = savedLocations.find(l => l.id == startId);
-        const endLoc = savedLocations.find(l => l.id == endId);
+        const startLoc = savedLocations.find(l => String(l.id) === String(startId));
+        const endLoc = savedLocations.find(l => String(l.id) === String(endId));
         if (!startLoc || !endLoc) return;
 
         const url = `https://api.openrouteservice.org/v2/directions/${mode}/geojson`;
@@ -2674,6 +2953,7 @@ async function searchDepartment() {
                 layer.bindTooltip(feature.properties.nom, { sticky: true, opacity: 0.8 });
             }
         }).addTo(map);
+        layer.bringToBack();
 
         activeDeptLayers[code] = layer;
         
@@ -2752,6 +3032,7 @@ function applyDeptSettings() {
             opacity: newStrokeOpacity,  // Opacité contour (stroke)
             fillOpacity: newFillOpacity // Opacité fond (fill)
         });
+        activeDeptLayers[code].bringToBack();
 
         // Mise à jour des valeurs stockées dans le badge (pour compatibilité fonctions communes)
         const btn = document.getElementById(`btn-dept-${code}`);
@@ -2821,6 +3102,7 @@ function toggleDeptVisibility(code) {
     } else {
         // ACTION : AFFICHER
         map.addLayer(layer);
+        layer.bringToBack();
         eyeSpan.innerText = "👁️";
         eyeSpan.title = "Masquer";
         eyeSpan.style.opacity = "1";
@@ -3611,216 +3893,270 @@ function openHelpInNewWindow() {
 </head>
 <body>
     <h1>📖 Mode d'emploi - Outil SIG EPL du Bourbonnais</h1>
-    
+
     <div class="container">
+
         <!-- 1. Introduction -->
-        <div class="section">
+        <div class="section full-width">
             <h2>1. Introduction</h2>
-            <p><strong>Cet outil cartographique permet de :</strong></p>
+            <p>Cet outil cartographique interactif permet de travailler sur des donn&eacute;es g&eacute;ographiques directement dans un navigateur web, sans installation. Il est con&ccedil;u pour cr&eacute;er des cartes th&eacute;matiques en combinant points GPS, communes et d&eacute;partements.</p>
+            <p><strong>Fonctionnalit&eacute;s principales :</strong></p>
             <ul>
-                <li>Ajouter et gérer des points GPS avec diff&eacute;rentes ic&ocirc;nes (formes, emojis)</li>
-                <li>S&eacute;lectionner et g&eacute;rer des communes fran&ccedil;aises</li>
-                <li>Calculer des cercles et isochrones autour des points</li>
-                <li>Calculer des itin&eacute;raires entre points</li>
-                <li>Exporter/importer des donn&eacute;es (Excel, KML)</li>
+                <li>Ajouter, &eacute;diter et organiser des <strong>points GPS</strong> avec ic&ocirc;nes, cat&eacute;gories et couches</li>
+                <li>S&eacute;lectionner des <strong>communes fran&ccedil;aises</strong> et enrichir leurs informations</li>
+                <li>Afficher les <strong>d&eacute;partements</strong> avec contours et couleurs personnalisables</li>
+                <li>Calculer des <strong>cercles de rayon</strong> et des <strong>isochrones</strong> (zones de temps de trajet)</li>
+                <li>Calculer des <strong>itin&eacute;raires</strong> entre deux points</li>
+                <li>Masquer/afficher individuellement chaque &eacute;l&eacute;ment de la carte</li>
+                <li>Rechercher rapidement dans les listes de points et de communes</li>
+                <li>Exporter et importer les donn&eacute;es (Excel, KML, image JPG)</li>
             </ul>
+            <div class="note">
+                <strong>&#128994; Aucune installation requise</strong> &mdash; L'outil fonctionne directement dans un navigateur web moderne (Chrome, Firefox, Edge). Les donn&eacute;es ne sont pas enregistr&eacute;es automatiquement : pensez &agrave; <strong>Enregistrer</strong> r&eacute;guli&egrave;rement.
+            </div>
         </div>
 
         <!-- 2. Interface principale -->
         <div class="section">
             <h2>2. Interface principale</h2>
+
             <h3>Barre d'outils sup&eacute;rieure</h3>
             <ul>
-                <li><strong>Titre du projet</strong> : Modifiable en cliquant dessus</li>
-                <li><strong>Ouvrir</strong> : Importer un fichier Excel</li>
-                <li><strong>Enregistrer</strong> : Exporter en Excel</li>                
-				<li><strong>Exporter JPG</strong> : Enregistrer la carte sous forme d'image .jpg</li>
-                <li><strong>Exporter KML</strong> : Exporter au format KML</li>
-                <li><strong>R&eacute;cup&eacute;rer KML</strong> : Importer un fichier KML/KMZ</li>
+                <li><strong>Titre du projet</strong> : Cliquer dessus (ou sur le ✏️) pour le modifier directement</li>
+                <li><strong>📥 Ouvrir</strong> : Charger un fichier Excel pr&eacute;c&eacute;demment enregistr&eacute;</li>
+                <li><strong>💾 Enregistrer</strong> : Sauvegarder tout le travail en cours dans un fichier Excel</li>
+                <li><strong>📸 Exporter JPG</strong> : Capturer la carte visible sous forme d'image JPEG</li>
+                <li><strong>🗺️ Exporter KML</strong> : Exporter les points vers Google Earth / QGIS</li>
+                <li><strong>📂 R&eacute;cup&eacute;rer KML</strong> : Importer des points depuis un fichier .kml</li>
+                <li><strong>❓ Aide</strong> : Ouvrir ce mode d'emploi dans un nouvel onglet</li>
             </ul>
-            
-            <h3>Barre de saisie/positionnement des points GPS</h3>
+
+            <h3>Barre de saisie des points GPS</h3>
             <ul>
-                <li><strong>Adresse</strong> : Saisir une adresse compl&egrave;te</li>
-                <li><strong>Lat/Lon</strong> : Saisir des coordonn&eacute;es GPS (notamment quand l\'adresse compl&egrave;te ne fonctionne pas)</li>
-                <li><strong>Placer</strong> : Positionner un point GPS manuellement (récupération, dans la mesure du possible, les informations du point GPS pour les afficher)</li>
-                <li><strong>Ajouter le Point</strong> : Valider la saisie</li>
+                <li><strong>Champ Adresse</strong> : Saisir une adresse compl&egrave;te (g&eacute;ocodage automatique)</li>
+                <li><strong>Champs Lat / Lon</strong> : Saisir des coordonn&eacute;es GPS directement</li>
+                <li><strong>Pointer sur la carte</strong> : Activer le mode clic sur la carte pour placer un point &agrave; la souris &mdash; les coordonn&eacute;es et l'adresse sont r&eacute;cup&eacute;r&eacute;es automatiquement</li>
+                <li><strong>Ajouter le Point</strong> : Valider et afficher le point sur la carte</li>
             </ul>
-            
-            <h3>Colonnes lat&eacute;rales à droite</h3>
+
+            <h3>Panneau lat&eacute;ral droit &mdash; deux colonnes</h3>
             <ul>
-                <li><strong>Première</strong> : Liste des points GPS avec boutons de tri et actions</li>
-                <li><strong>Deuxième</strong> : Liste des communes s&eacute;lectionn&eacute;es</li>
+                <li><strong>Colonne gauche</strong> : Liste des points GPS, avec moteur de recherche, boutons de tri et actions par point</li>
+                <li><strong>Colonne droite</strong> : Liste des communes s&eacute;lectionn&eacute;es, avec moteur de recherche, boutons de tri, badge(s) de d&eacute;partement(s) et actions par commune</li>
             </ul>
         </div>
 
-        <!-- 3. Gestion des points GPS -->
+        <!-- 3. Fonds de carte -->
         <div class="section">
-            <h2>3. Gestion des points GPS</h2>
+            <h2>3. Fonds de carte</h2>
+            <p>Un s&eacute;lecteur de fond de carte est disponible en haut &agrave; droite de la carte. Cinq fonds sont disponibles :</p>
+            <ul>
+                <li><strong>OpenStreetMap</strong> (d&eacute;faut) &mdash; carte routière libre</li>
+                <li><strong>Routes (Esri)</strong> &mdash; carte routière d&eacute;taill&eacute;e</li>
+                <li><strong>Satellite (Esri)</strong> &mdash; vue a&eacute;rienne</li>
+                <li><strong>Hybride (Esri)</strong> &mdash; satellite + noms de lieux</li>
+                <li><strong>National Geographic</strong> &mdash; carte th&eacute;matique</li>
+            </ul>
+            <p>L'&eacute;chelle m&eacute;trique est affich&eacute;e en bas &agrave; gauche de la carte. Le zoom est contr&ocirc;lable &agrave; la souris ou avec les boutons +/&minus;.</p>
+        </div>
+
+        <!-- 4. Gestion des points GPS -->
+        <div class="section">
+            <h2>4. Gestion des points GPS</h2>
+
             <h3>Ajouter un point</h3>
             <ul>
-                <li>Saisir une adresse <strong>OU</strong> des coordonn&eacute;es GPS puis cliquer sur <strong>Ajouter le Point</strong> </li>
-                <li><strong>OU</strong> Cliquer sur <strong>Pointer</strong>, cliquer sur le lieu sur la carte (des coordonnées GPS apparaissent dans la barre de saisie) puis cliquer sur <strong>Ajouter le Point</strong></li>
-                <li>Le point appara&icirc;t sur la carte et dans la liste</li>
+                <li><strong>Par adresse</strong> : Saisir l'adresse dans le champ pr&eacute;vu, puis cliquer sur <strong>Ajouter le Point</strong></li>
+                <li><strong>Par coordonn&eacute;es</strong> : Renseigner Latitude et Longitude, puis <strong>Ajouter le Point</strong></li>
+                <li><strong>Par clic sur la carte</strong> : Cliquer sur <strong>Pointer sur la carte</strong>, cliquer &agrave; l'endroit voulu, puis <strong>Ajouter le Point</strong></li>
             </ul>
-            
+
+            <h3>Rechercher un point</h3>
+            <p>Le champ 🔍 situ&eacute; au-dessus des boutons de tri filtre instantan&eacute;ment la liste sur tous les champs : titre, adresse, code postal, ville, cat&eacute;gorie, couche et m&ecirc;me coordonn&eacute;es GPS. Le bouton ✕ efface le filtre.</p>
+
+            <h3>Masquer / Afficher un point</h3>
+            <p>Cliquer sur <strong>👁️</strong> dans la liste du point. L'ic&ocirc;ne devient 🚫, le point disparaît de la carte et la ligne est gris&eacute;e dans la liste. Cliquer de nouveau pour le r&eacute;afficher. Cette action n'affecte pas les autres points.</p>
+
             <h3>Modifier un point</h3>
             <ul>
-                <li>Cliquer sur l'ic&ocirc;ne <strong>✏️</strong> dans la liste</li>
-                <li>Modifier les informations (titre, adresse, type d'ic&ocirc;ne, cat&eacute;gorie, couche)</li>
+                <li>Cliquer sur <strong>✏️</strong> dans la liste du point</li>
+                <li>Modifier : titre, adresse, type d'ic&ocirc;ne (cercle, punaise, carr&eacute;, triangle, losange, &eacute;toile, emoji), cat&eacute;gorie, couche, popup permanent</li>
+                <li>Valider avec <strong>Enregistrer</strong></li>
             </ul>
-            
-            <h3>Emojis</h3>
-            <p>S&eacute;lectionner "Emoji (personnalisable)" dans le type d'ic&ocirc;ne</p>
-            
-            <h3>Cercles</h3>
-            <p>Cliquer sur <strong>⭕</strong> pour d&eacute;finir un rayon (km) et une couleur</p>
-            
-            <h3>Isochrones</h3>
-            <p>Cliquer sur <strong>⏱️</strong> pour calculer une zone de temps de trajet</p>
+
+            <h3>Types d'ic&ocirc;nes disponibles</h3>
+            <ul>
+                <li><strong>Cercle</strong> : couleur de la cat&eacute;gorie</li>
+                <li><strong>Punaise</strong> : ic&ocirc;ne Leaflet classique</li>
+                <li><strong>Carr&eacute;, Triangle, Losange, &Eacute;toile</strong> : formes g&eacute;om&eacute;triques color&eacute;es</li>
+                <li><strong>Emoji</strong> : choisir parmi une liste (maison, &eacute;cole, commerce, transport...)</li>
+            </ul>
+
+            <h3>Cat&eacute;gories</h3>
+            <p>Les cat&eacute;gories d&eacute;finissent la couleur des points. Cliquer sur le tag de cat&eacute;gorie dans la liste pour en changer, ou utiliser le lien <em>G&eacute;rer les cat&eacute;gories</em> dans la fen&ecirc;tre d'&eacute;dition.</p>
+
+            <h3>Couches</h3>
+            <p>Les couches servent au filtrage et &agrave; l'organisation. Le bouton <strong>🗂️ Couches</strong> ouvre la gestion : ajouter, renommer, coloriser, supprimer des couches. Cocher/d&eacute;cocher une couche masque/affiche tous ses points d'un coup.</p>
+
+            <h3>Cercles de rayon</h3>
+            <p>Cliquer sur <strong>⭕</strong> dans la liste du point. D&eacute;finir le rayon en kilom&egrave;tres et la couleur. Le cercle s'affiche autour du point et est export&eacute; avec lui.</p>
+
+            <h3>Isochrones (zones de temps de trajet)</h3>
+            <p>Cliquer sur <strong>⏱️</strong>. Choisir le mode (pied, v&eacute;lo, voiture), la dur&eacute;e (minutes) et la couleur. Une cl&eacute; API OpenRouteService est n&eacute;cessaire.</p>
             <div class="note">
-                <strong>Note :</strong> Une cl&eacute; API OpenRouteService est n&eacute;cessaire. Obtenez-la sur <a href="https://account.heigit.org/manage/key" target="_blank">https://account.heigit.org</a>
-				<br>(Créer un compte puis copier la clé récupérable à cette adresse https://account.heigit.org/manage/key)
+                <strong>Cl&eacute; API :</strong> S'inscrire gratuitement sur <a href="https://account.heigit.org/manage/key" target="_blank">account.heigit.org</a> pour obtenir une cl&eacute;. La m&ecirc;me cl&eacute; fonctionne pour les isochrones <em>et</em> les itin&eacute;raires.
             </div>
-            
-            <h3>G&eacute;rer les cat&eacute;gories/couches</h3>
-            <ul>
-                <li>Cliquer sur le tag de cat&eacute;gorie dans la liste</li>
-                <li>Utiliser le bouton <strong>Couches</strong> pour g&eacute;rer les couches</li>
-            </ul>
-            
+
+            <h3>Popup permanent</h3>
+            <p>Dans la fen&ecirc;tre d'&eacute;dition, cocher <strong>Afficher le contenu en permanence</strong> pour que le nom du point reste toujours visible sur la carte, sans avoir &agrave; survoler le marqueur.</p>
+
+            <h3>Trier les points</h3>
+            <p>Les boutons de tri au-dessus de la liste permettent de classer par : titre (A&rarr;Z / Z&rarr;A), couche (A&rarr;Z / Z&rarr;A), cat&eacute;gorie (A&rarr;Z / Z&rarr;A).</p>
+
             <h3>Supprimer un point</h3>
+            <p>Cliquer sur <strong>🗑️</strong> dans la liste. La suppression est imm&eacute;diate (sans confirmation &mdash; utilisez <strong>Enregistrer</strong> r&eacute;guli&egrave;rement comme filet de s&eacute;curit&eacute;).</p>
+        </div>
+
+        <!-- 5. Gestion des départements -->
+        <div class="section">
+            <h2>5. Gestion des d&eacute;partements</h2>
+            <div class="note"><strong>Pr&eacute;requis :</strong> Afficher un d&eacute;partement est indispensable pour pouvoir ensuite cliquer sur ses communes.</div>
+
+            <h3>Afficher un d&eacute;partement</h3>
+            <ol>
+                <li>Saisir le code INSEE du d&eacute;partement dans le champ (ex : <strong>03</strong> pour l'Allier, <strong>63</strong> pour le Puy-de-D&ocirc;me)</li>
+                <li>Cliquer sur <strong>✅</strong></li>
+                <li>Le d&eacute;partement s'affiche sur la carte avec ses contours communaux</li>
+                <li>Un badge apparaît dans la colonne de droite</li>
+            </ol>
+
+            <h3>Personnaliser l'apparence</h3>
             <ul>
-                <li>Cliquer sur l'ic&ocirc;ne <strong>🗑️</strong> dans la liste</li>
-                <li>Confirmer la suppression</li>
+                <li><strong>Couleur</strong> : Cliquer sur le rond de couleur dans le badge d&eacute;partement pour changer couleur, opacit&eacute; du contour et opacit&eacute; du fond</li>
+                <li><strong>Opacit&eacute;</strong> : Utiliser les boutons &minus; / + du badge pour ajuster l'opacit&eacute; du fond</li>
+                <li><strong>Masquer / R&eacute;afficher</strong> : Cliquer sur 👁️ dans le badge. La couche d&eacute;partement reste toujours en arri&egrave;re-plan lors du r&eacute;affichage</li>
+                <li><strong>Supprimer</strong> : Cliquer sur 🗑️ dans le badge</li>
             </ul>
         </div>
 
-        <!-- 4. Gestion des départements et des communes -->
+        <!-- 6. Gestion des communes -->
         <div class="section">
-            <h2>4. Gestion des départements et des communes</h2>
-            <h3>Afficher un d&eacute;partement</h3>
-			<div><strong>Obligatoire pour sélectionner les communes sur la carte !</strong></div>
-            <ol>
-                <li>Saisir le code d'un d&eacute;partement (ex: 03 pour l'Allier)</li>
-                <li>Cliquer sur <strong>✅</strong> pour valider</li>
-                <li>Le d&eacute;partement appara&icirc;t en vert avec ses limites communales (couleur modifiable : cliquer sur le rond de couleur, sélectionner une couleur, cliquer sur <strong>OK</strong>)</li>
-                <li>Il est possible de faire dispara&icirc;tre les limites des communes du d&eacute;partement : cliquer sur le bouton du d&eacute;partement (passe en sombre) ou sur la <strong>🗑️</strong>)</li>
-                <li>Les communes sont cliquables</li>
-            </ol>
-            
+            <h2>6. Gestion des communes</h2>
+<div class="note"><strong>Pr&eacute;requis :</strong> Afficher un d&eacute;partement est indispensable pour pouvoir ensuite cliquer sur ses communes.</div>
             <h3>S&eacute;lectionner une commune</h3>
             <ul>
-                <li><strong>Depuis la carte</strong> : Cliquer sur une commune du d&eacute;partement</li>
-                <li>La commune est ajout&eacute;e &agrave; la liste de droite</li>
-                <li>La commune appara&icirc;t en vert sur la carte</li>
+                <li>Cliquer directement sur le territoire d'une commune affich&eacute;e sur la carte</li>
+                <li>La commune est color&eacute;e et ajout&eacute;e en t&ecirc;te de la liste de droite</li>
+                <li>Si la commune est d&eacute;j&agrave; dans la liste, elle remonte en premi&egrave;re position</li>
             </ul>
-            
-            <h3>Remonter une commune</h3>
+
+            <h3>Rechercher une commune</h3>
+            <p>Le champ 🔍 situ&eacute; au-dessus des boutons de tri filtre instantan&eacute;ment sur le nom, le code INSEE, le d&eacute;partement et le code postal. Le bouton ✕ efface le filtre.</p>
+
+            <h3>Masquer / Afficher une commune</h3>
+            <p>Cliquer sur <strong>👁️</strong> dans la liste de la commune. Le contour/remplissage disparaît de la carte (ic&ocirc;ne devient 🚫). Cliquer de nouveau pour r&eacute;afficher.</p>
+
+            <h3>Modifier les informations d'une commune</h3>
+            <p>Cliquer sur <strong>✏️</strong> dans la liste. La fen&ecirc;tre d'&eacute;dition permet de renseigner :</p>
             <ul>
-                <li>Cliquer sur la commune dans la liste <strong>OU</strong> sur son polygone sur la carte</li>
-                <li>La commune passe en premi&egrave;re position</li>
-                <li>La carte zoome sur la commune</li>
+                <li><strong>Informations g&eacute;n&eacute;rales</strong> : nom, code postal, d&eacute;partement (le code INSEE est non modifiable)</li>
+                <li><strong>Donn&eacute;es g&eacute;ographiques</strong> : population, superficie (km&sup2;), altitude (m), densit&eacute; (calcul&eacute;e automatiquement si population et superficie sont renseign&eacute;es)</li>
+                <li><strong>Notes libres</strong> : zone de texte libre pour toute information compl&eacute;mentaire</li>
             </ul>
-            
+            <p>Apr&egrave;s enregistrement, les informations apparaissent dans la liste <em>et</em> dans le tooltip au survol de la commune sur la carte.</p>
+
             <h3>Changer la couche d'une commune</h3>
-            <ul>
-                <li>Cliquer sur le tag color&eacute; &agrave; c&ocirc;t&eacute; du nom</li>
-                <li>S&eacute;lectionner une couche dans la modale</li>
-                <li>La couleur de la commune change</li>
-            </ul>
-            
-            <h3>G&eacute;rer l'affichage des d&eacute;partements</h3>
-            <ul>
-                <li><strong>D&eacute;sactiver/r&eacute;activer</strong> : Cliquer sur le bouton du d&eacute;partement</li>
-                <li><strong>Supprimer</strong> : Cliquer sur la poubelle &agrave; droite du bouton</li>
-                <li><strong>Changer la couleur</strong> : Utiliser le s&eacute;lecteur rond &agrave; gauche</li>
-            </ul>
-            
+            <p>Cliquer sur le badge color&eacute; 📁 dans la liste de la commune pour ouvrir la gestion des couches et lui en affecter une autre.</p>
+
+            <h3>Zoomer sur une commune</h3>
+            <p>Cliquer sur le nom ou les informations de la commune dans la liste (zone de texte) pour centrer et zoomer la carte sur ce territoire.</p>
+
+            <h3>Trier les communes</h3>
+            <p>Les boutons de tri permettent de classer par : nom (A&rarr;Z / Z&rarr;A), couche (A&rarr;Z / Z&rarr;A), d&eacute;partement (A&rarr;Z / Z&rarr;A).</p>
+
             <h3>Supprimer une commune</h3>
-            <ul>
-                <li>Cliquer sur l'ic&ocirc;ne <strong>🗑️</strong> &agrave; droite de la commune</li>
-                <li>La commune dispara&icirc;t de la carte</li>
-            </ul>
+            <p>Cliquer sur <strong>🗑️</strong> dans la liste de la commune. Elle disparaît de la carte et de la liste.</p>
         </div>
 
-        <!-- 5. Calcul d'itinéraire -->
+        <!-- 7. Calcul d'itinéraire -->
         <div class="section">
-            <h2>5. Calcul d'itin&eacute;raire</h2>
+            <h2>7. Calcul d'itin&eacute;raire</h2>
             <ol>
-                <li>Cliquer sur le bouton <strong>Itin&eacute;raire</strong> au-dessus de la liste des points</li>
-                <li>S&eacute;lectionner un point de d&eacute;part et un point d'arriv&eacute;e</li>
-                <li>Choisir le mode de transport</li>
-                <li>Entrer une cl&eacute; API OpenRouteService</li>
+                <li>Cliquer sur le bouton <strong>🗺️ Itin&eacute;raire</strong> au-dessus de la liste des points</li>
+                <li>S&eacute;lectionner un <strong>point de d&eacute;part</strong> et un <strong>point d'arriv&eacute;e</strong> parmi les points GPS de la carte</li>
+                <li>Choisir le <strong>mode de transport</strong> : &agrave; pied, v&eacute;lo, voiture</li>
+                <li>Saisir la <strong>cl&eacute; API OpenRouteService</strong> (conserv&eacute;e d'une session &agrave; l'autre dans la fen&ecirc;tre)</li>
                 <li>Cliquer sur <strong>Calculer</strong></li>
-                <li>L'itin&eacute;raire appara&icirc;t en bleu sur la carte</li>
-                <li>Les distances et dur&eacute;es s'affichent</li>
             </ol>
+            <p>L'itin&eacute;raire s'affiche en bleu sur la carte avec la distance totale et la dur&eacute;e estim&eacute;e. Le bouton <strong>Effacer</strong> supprime le trac&eacute;.</p>
             <div class="note">
-                <strong>Note :</strong> Une cl&eacute; API OpenRouteService est n&eacute;cessaire. Obtenez-la sur <a href="https://account.heigit.org/manage/key" target="_blank">https://account.heigit.org</a>
-				<br>(Créer un compte puis copier la clé récupérable à cette adresse https://account.heigit.org/manage/key)
-				<br>La m&ecirc;me cl&eacute; API que pour les isochrones peut &ecirc;tre utilis&eacute;e.
+                <strong>Cl&eacute; API :</strong> La m&ecirc;me cl&eacute; OpenRouteService est utilis&eacute;e pour les isochrones et les itin&eacute;raires. La conserver pr&eacute;cieusement.
             </div>
         </div>
 
-        <!-- 6. Import/Export -->
+        <!-- 8. Import / Export -->
         <div class="section">
-            <h2>6. Import/Export</h2>
-            <h3>Enregistrer son travail</h3>
+            <h2>8. Import / Export</h2>
+
+            <h3>💾 Enregistrer (Excel)</h3>
             <ul>
-                <li>Cliquer sur <strong>Enregistrer</strong></li>
-                <li>Si l'enregistrement se fait sans demande le fichier est enregistré dans "Téléchargements"</li>
-                <li>Sinon saisir un emplacement (dossier), un nom (par défaut le titre de la carte est proposé)</li>
-                <li>Le fichier exporte les feuilles "Points" et "Communes" dans un fichier Excel 
-				qui contient l'ensemble des données du travail en cours (département, formes, couleurs,...). 
-				Cela permet d'effectuer des modifications dans le fichier (changer le nom d'une couche à un lot de points, ...)
-				à l'aide d'Ecel ou LibreOffice avant l'ouverture dans l'outil SIG.</li>
+                <li>Cliquer sur <strong>💾 Enregistrer</strong></li>
+                <li>Un fichier Excel (.xlsx) est g&eacute;n&eacute;r&eacute; avec trois feuilles : <strong>Points</strong>, <strong>Communes</strong>, <strong>D&eacute;partements</strong></li>
+                <li>Ce fichier contient toutes les donn&eacute;es : couleurs, couches, ic&ocirc;nes, cercles, isochrones, visibilit&eacute;, notes communes&hellip;</li>
+                <li>Il peut &ecirc;tre ouvert et modifi&eacute; dans Excel ou LibreOffice (ex : changer le nom d'une couche pour un lot de points) avant r&eacute;importation</li>
             </ul>
-            
-            <h3>Récupérer son travail</h3>
+
+            <h3>📥 Ouvrir (Excel)</h3>
             <ul>
-                <li>Cliquer sur <strong>Ouvrir</strong></li>
-                <li>Rechercher l'emplacement du fichier (dossier, cléUSB, ...) </li>
-                <li>S&eacute;lectionner le fichier Excel </li>
-                <li>Les points, les départements et les communes sont restaur&eacute;s</li>
+                <li>Cliquer sur <strong>📥 Ouvrir</strong> et s&eacute;lectionner le fichier .xlsx</li>
+                <li>Les points, communes et d&eacute;partements sont restaur&eacute;s avec toutes leurs propri&eacute;t&eacute;s</li>
+                <li>Les d&eacute;partements sont recharg&eacute;s en premier (n&eacute;cessaire pour retrouver les contours des communes sans appel API suppl&eacute;mentaire)</li>
             </ul>
-            
-            <h3>Récupérer une image de la carte</h3>
+
+            <h3>📸 Exporter JPG</h3>
             <ul>
-                <li>Si l'enregistrement se fait sans demande le fichier est enregistré dans "Téléchargements"</li>
-                <li>Sinon saisir un emplacement (dossier), un nom (par défaut le titre de la carte et la date d'enregistrement sont proposés)</li>
-            </ul>           
-			
-			<h3>Exporter en KML</h3>
-            <ul>
-                <li>Cliquer sur <strong>Exporter KML</strong></li>
-                <li>Tous les points et leurs cercles/isochrones sont export&eacute;s</li>
+                <li>Cliquer sur <strong>📸 Exporter JPG</strong></li>
+                <li>Une capture de la carte (haute r&eacute;solution &times;2) est g&eacute;n&eacute;r&eacute;e</li>
+                <li>Le nom de fichier propos&eacute; reprend le titre du projet et la date</li>
             </ul>
-            
-            <h3>Importer un fichier KML</h3>
+
+            <h3>🗺️ Exporter KML</h3>
             <ul>
-                <li>Cliquer sur <strong>R&eacute;cup&eacute;rer KML</strong></li>
-                <li>S&eacute;lectionner un fichier .kml</li>
-                <li>Les points sont import&eacute;s</li>
+                <li>Cliquer sur <strong>🗺️ Exporter KML</strong></li>
+                <li>Tous les points, leurs cercles et isochrones sont export&eacute;s au format KML</li>
+                <li>Compatible Google Earth, QGIS et la plupart des SIG</li>
+            </ul>
+
+            <h3>📂 R&eacute;cup&eacute;rer KML</h3>
+            <ul>
+                <li>Cliquer sur <strong>📂 R&eacute;cup&eacute;rer KML</strong> et s&eacute;lectionner un fichier .kml</li>
+                <li>Les points contenus dans le fichier sont import&eacute;s et ajout&eacute;s &agrave; la carte</li>
             </ul>
         </div>
 
-        <!-- 7. Raccourcis et astuces -->
+        <!-- 9. Raccourcis et astuces -->
         <div class="section full-width">
-            <h2>7. Raccourcis et astuces</h2>
-            <ul style="columns: 2; column-gap: 20px;">
-                <li><strong>Tri</strong> : Utiliser les boutons de tri pour organiser les listes</li>
-                <li><strong>Focus</strong> : Cliquer sur un &eacute;l&eacute;ment dans la liste pour zoomer</li>
-                <li><strong>Cl&eacute; API</strong> : &Agrave; conserver pour les calculs d'isochrones et d'itin&eacute;raires</li>
-                <li><strong>Ordre d'affichage</strong> : Les points GPS sont toujours au premier plan</li>
-                <li><strong>Popup permanent</strong> : Option dans l'&eacute;dition pour afficher le nom en permanence</li>
-                <li><strong>Sauvegarde</strong> : Exporter r&eacute;guli&egrave;rement en Excel pour ne pas perdre les donn&eacute;es</li>
+            <h2>9. Raccourcis et astuces</h2>
+            <ul style="columns: 2; column-gap: 30px;">
+                <li><strong>Recherche instantan&eacute;e</strong> : Le champ 🔍 filtre en temps r&eacute;el dans la liste des points <em>et</em> dans la liste des communes</li>
+                <li><strong>Masquer sans supprimer</strong> : 👁️ masque un point ou une commune sur la carte sans le retirer de la liste</li>
+                <li><strong>Couches = filtres</strong> : D&eacute;cocher une couche dans 🗂️ Couches masque tous ses points d'un seul clic</li>
+                <li><strong>D&eacute;partement toujours en arri&egrave;re-plan</strong> : M&ecirc;me apr&egrave;s masquage/r&eacute;affichage, le d&eacute;partement reste derri&egrave;re les communes et les points</li>
+                <li><strong>Focus carte</strong> : Cliquer sur un &eacute;l&eacute;ment dans la liste zoome automatiquement dessus</li>
+                <li><strong>Densit&eacute; auto</strong> : Dans l'&eacute;diteur de commune, renseigner population et superficie calcule la densit&eacute; automatiquement</li>
+                <li><strong>Popup permanent</strong> : Option dans ✏️ pour qu'un nom reste toujours visible sur la carte</li>
+                <li><strong>Titre modifiable</strong> : Cliquer sur le titre en haut &agrave; gauche pour le renommer</li>
+                <li><strong>Cl&eacute; API &agrave; conserver</strong> : La cl&eacute; OpenRouteService est n&eacute;cessaire pour isochrones et itin&eacute;raires</li>
+                <li><strong>Sauvegarde fr&eacute;quente</strong> : Les donn&eacute;es ne sont pas sauvegard&eacute;es automatiquement &mdash; exporter r&eacute;guli&egrave;rement en Excel</li>
+                <li><strong>Modifier en masse</strong> : Ouvrir l'Excel export&eacute; dans LibreOffice pour modifier des propri&eacute;t&eacute;s sur plusieurs lignes, puis r&eacute;importer</li>
+                <li><strong>Points toujours au premier plan</strong> : Les marqueurs GPS s'affichent toujours par-dessus les communes et d&eacute;partements</li>
             </ul>
         </div>
+
     </div>
 
     <div class="footer">
-        <p>Version : 19/03/2026 - J-F D, Lyc&eacute;e Agricole du Bourbonnais</p>
+        <p>Version : 20/03/2026 - J-F D, Lyc&eacute;e Agricole du Bourbonnais</p>
 		<small>Outil en HTML Javascript créé dans le cadre d'une expérimentation de Programmation Assistée par Itelligence Artificielle.</small>
     </div>
 
