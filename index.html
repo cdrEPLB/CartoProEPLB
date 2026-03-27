@@ -37,6 +37,28 @@
         #historyList {
             border-right: 1px solid #eee;
         }
+		
+				/* Bouton de masquage du panneau latéral */
+		#toggle-sidebar {
+			position: absolute;
+			right: 500px; /* Largeur du sidebar */
+			top: 50%;
+			transform: translateY(-50%);
+			z-index: 1001;
+			background: white;
+			border: 1px solid #bdc3c7;
+			border-right: none;
+			border-radius: 10px 0 0 10px;
+			padding: 15px 5px;
+			cursor: pointer;
+			box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+			transition: right 0.3s ease;
+		}
+
+		.sidebar-hidden #sidebar { display: none; }
+		.sidebar-hidden #toggle-sidebar { right: 0; border-right: 1px solid #bdc3c7; border-radius: 10px; }
+		.sidebar-hidden #map { flex: 1; }
+		
 		.location-item {
 			padding: 15px;
 			border-bottom: 1px solid #eee;
@@ -383,7 +405,8 @@
 
 <div class="main-container">
     <div id="map"></div>
-    <div id="sidebar">
+<button id="toggle-sidebar" onclick="toggleSidebar()" title="Afficher/Masquer le panneau latéral">〉</button>   
+   <div id="sidebar">
         <div style="background:rgba(192,192,192); border-bottom:1px solid #eee;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                 
@@ -573,22 +596,69 @@
 </div>
 
 <!-- Modale pour configurer le cercle -->
+<!-- Dans la section modale des cercles, remplacer la partie renderCirclesList -->
+<!-- Modale pour configurer le cercle (version avec édition) -->
 <div id="circleModal">
-    <div class="modal-content" style="width: 350px;">
-        <h3>Configurer le cercle</h3>
+    <div class="modal-content" style="width: 500px;">
+        <h3>Gestion des cercles</h3>
         <input type="hidden" id="circle-point-id">
+        
+        <div id="existing-circles-list" style="max-height: 250px; overflow-y: auto; margin-bottom: 15px; border: 1px solid #eee; padding: 10px; background: #f9f9f9; border-radius: 5px;">
+        </div>
+
+        <div style="padding: 10px; border: 1px dashed #3498db; border-radius: 5px;">
+            <p style="margin: 0 0 10px 0; font-weight: bold; color: #3498db;">Ajouter un nouveau cercle :</p>
+            <div class="form-group">
+                <label>Rayon (km)</label>
+                <input type="number" id="new-circle-radius" value="5" min="0.1" step="0.1">
+            </div>
+            <div class="form-group">
+                <label>Couleur de remplissage</label>
+                <input type="color" id="new-circle-color" value="#3388ff">
+            </div>
+            <div class="form-group">
+                <label>Couleur du contour</label>
+                <input type="color" id="new-circle-border-color" value="#3388ff">
+            </div>
+            <div class="form-group">
+                <label>Épaisseur du contour (px)</label>
+                <input type="number" id="new-circle-border-weight" value="2" min="0" max="10" step="0.5">
+            </div>
+            <button class="btn btn-save" onclick="addNewCircleToPoint()" style="width: 100%; margin-top: 5px;">➕ Ajouter ce cercle</button>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeCircleModal()">Fermer</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modale d'édition d'un cercle (nouvelle modale) -->
+<div id="editCircleModal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
+    <div class="modal-content" style="width: 400px;">
+        <h3>✏️ Modifier le cercle</h3>
+        <input type="hidden" id="edit-circle-point-id">
+        <input type="hidden" id="edit-circle-index">
+        
         <div class="form-group">
             <label>Rayon (km)</label>
-            <input type="number" id="circle-radius" value="5" min="0" step="0.1">
+            <input type="number" id="edit-circle-radius" min="0.1" step="0.1">
         </div>
         <div class="form-group">
             <label>Couleur de remplissage</label>
-            <input type="color" id="circle-color" value="#3388ff">
+            <input type="color" id="edit-circle-fill-color">
+        </div>
+        <div class="form-group">
+            <label>Couleur du contour</label>
+            <input type="color" id="edit-circle-border-color">
+        </div>
+        <div class="form-group">
+            <label>Épaisseur du contour (px)</label>
+            <input type="number" id="edit-circle-border-weight" min="0" max="10" step="0.5">
         </div>
         <div class="modal-footer">
-            <button class="btn btn-cancel" onclick="closeCircleModal()">Annuler</button>
-            <button class="btn btn-danger" onclick="deleteCircle()">Désactiver</button>
-            <button class="btn btn-save" onclick="saveCircle()">Appliquer</button>
+            <button class="btn btn-cancel" onclick="closeEditCircleModal()">Annuler</button>
+            <button class="btn btn-save" onclick="saveCircleChanges()">Enregistrer</button>
         </div>
     </div>
 </div>
@@ -729,24 +799,45 @@
 </div>
 
 <!-- Modale pour Badge département -->
+<!-- Modale pour Badge département (version améliorée) -->
 <div id="deptSettingsModal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
-    <div class="modal-content" style="width: 350px;">
+    <div class="modal-content" style="width: 400px;">
         <h3 id="dept-modal-title">Réglages Département</h3>
         <input type="hidden" id="current-dept-code">
         
         <div class="form-group">
-            <label>Couleur (Contour & Fond)</label>
-            <input type="color" id="modal-dept-color" style="width: 100%; height: 40px; cursor: pointer;">
+            <label>Couleur du fond</label>
+            <input type="color" id="modal-dept-fill-color" style="width: 100%; height: 40px; cursor: pointer;">
+        </div>
+        
+        <div class="form-group">
+            <label>Opacité du fond (<span id="modal-dept-fill-opacity-val">0.5</span>)</label>
+            <input type="range" id="modal-dept-fill-opacity-range" min="0" max="1" step="0.05" value="0.5" style="width: 100%;">
+        </div>
+        
+        <div class="form-group">
+            <label>Couleur du contour</label>
+            <input type="color" id="modal-dept-stroke-color" style="width: 100%; height: 40px; cursor: pointer;">
         </div>
         
         <div class="form-group">
             <label>Opacité du contour (<span id="modal-dept-stroke-opacity-val">1.0</span>)</label>
-            <input type="range" id="modal-dept-stroke-opacity-range" min="0" max="1" step="0.1" value="1.0" style="width: 100%;">
+            <input type="range" id="modal-dept-stroke-opacity-range" min="0" max="1" step="0.05" value="1.0" style="width: 100%;">
         </div>
-
+        
         <div class="form-group">
-            <label>Opacité du fond (<span id="modal-dept-opacity-val">0.5</span>)</label>
-            <input type="range" id="modal-dept-opacity-range" min="0" max="1" step="0.1" value="0.5" style="width: 100%;">
+            <label>Épaisseur du contour (px)</label>
+            <input type="number" id="modal-dept-stroke-weight" min="0" max="10" step="0.5" value="2" style="width: 100%;">
+        </div>
+        
+        <div class="form-group">
+            <label>Type de trait du contour</label>
+            <select id="modal-dept-stroke-style" style="width: 100%; padding: 8px;">
+                <option value="solid">──── Continu</option>
+                <option value="dashed">- - - - Pointillés</option>
+                <option value="dotted">• • • • Points</option>
+                <option value="dashdot">- • - • Mixte</option>
+            </select>
         </div>
 
         <div class="modal-footer">
@@ -869,7 +960,7 @@ L.control.layers(baseMaps).addTo(map);
 
 // NOUVEAU COPYRIGHT CENTRÉ 
 const copyrightDiv = L.DomUtil.create('div', 'map-copyright', document.getElementById('map'));
-copyrightDiv.innerHTML = '©️ OpenStreetMap contributors | ©️ 20/03/2026 Lycée Agricole du Bourbonnais';
+copyrightDiv.innerHTML = '©️ OpenStreetMap contributors | ©️ 27/03/2026 Lycée Agricole du Bourbonnais';
 
 
     // Variables globales
@@ -1177,7 +1268,7 @@ function updateCommunesUI() {
                 <strong>🏘️ ${com.nom}</strong><br>
                 <small style="color:#666;">🗺️ ${com.departement || 'Département inconnu'}${com.cp ? ' • CP : ' + com.cp : ''}</small><br>
                 <small>👥 ${com.population ? com.population.toLocaleString() : 'N/C'} hab.${com.superficie ? ' • ' + com.superficie + ' km²' : ''}${com.altitude ? ' • ' + com.altitude + ' m alt.' : ''}</small>
-                ${com.notes ? `<br><small style="color:#888; font-style:italic;">📝 ${com.notes}</small>` : ''}
+                ${com.notes ? '<br><small style="color:#888; font-style:italic;">📝 ${com.notes}</small>' : ''}
                 <div>
                     <span class="cat-tag" style="background:${layer.color};" 
                           onclick="event.stopPropagation(); openLayersModalForCommune(${index})">
@@ -1616,7 +1707,20 @@ function renderPointOnMap(loc) {
     }
 
     // D'abord les cercles et isochrones (en arrière-plan)
-    if (loc.circle) {
+    if (loc.circles && loc.circles.length > 0) {
+        loc.circles.forEach(circle => {
+            const circleLayer = L.circle([loc.lat, loc.lon], {
+                radius: circle.radius * 1000,
+                color: circle.color,
+                fillColor: circle.color,
+                fillOpacity: 0.2,
+                weight: 1,
+                interactive: false
+            });
+            markersLayer.addLayer(circleLayer);
+            circle.layer = circleLayer; // garder référence
+        });
+    } else if (loc.circle) { // compatibilité ancienne
         const circle = L.circle([loc.lat, loc.lon], {
             radius: loc.circle.radiusKm * 1000,
             color: loc.circle.color,
@@ -2084,49 +2188,218 @@ function saveModalChanges() {
         }
     }
 
-    // --- CERCLES ---
-    function editCircle(id) {
-        const loc = savedLocations.find(l => String(l.id) === String(id));
-        if (!loc) return;
-        document.getElementById('circle-point-id').value = id;
-        if (loc.circle) {
-            document.getElementById('circle-radius').value = loc.circle.radiusKm;
-            document.getElementById('circle-color').value = loc.circle.color;
-        } else {
-            document.getElementById('circle-radius').value = 5;
-            document.getElementById('circle-color').value = '#3388ff';
-        }
-        document.getElementById('circleModal').style.display = 'flex';
-    }
+	// --- CERCLES ---
+		function editCircle(id) {
+			openCircleModal(id);
+		}
 
-    function closeCircleModal() {
-        document.getElementById('circleModal').style.display = 'none';
-    }
+		// Ouvre la modale et affiche la liste des cercles du point
+		function openCircleModal(pointId) {
+			document.getElementById('circle-point-id').value = pointId;
+			const point = savedLocations.find(p => p.id == pointId);
+			
+			// Migration : si le point a un ancien cercle unique, le convertir en tableau avec les nouveaux paramètres
+			if (point.circle && !point.circles) {
+				point.circles = [{
+					radius: point.circle.radiusKm,
+					fillColor: point.circle.color,
+					borderColor: point.circle.color,
+					borderWeight: 2,
+					color: point.circle.color,
+					layer: point.circle.layer
+				}];
+				delete point.circle;
+			}
+			
+			if (!point.circles) point.circles = [];
+			
+			// Recréer les layers des cercles s'ils n'existent pas (compatibilité avec anciens imports)
+			point.circles.forEach(circle => {
+				if (!circle.layer) {
+					const circleLayer = L.circle([point.lat, point.lon], {
+						radius: circle.radius * 1000,
+						color: circle.borderColor || circle.color,
+						fillColor: circle.fillColor || circle.color,
+						fillOpacity: 0.2,
+						weight: circle.borderWeight || 2,
+						interactive: false
+					}).addTo(map);
+					circle.layer = circleLayer;
+				}
+			});
+			
+			renderCirclesList(point);
+			document.getElementById('circleModal').style.display = 'flex';
+		}
 
-    function saveCircle() {
-        const id = document.getElementById('circle-point-id').value;
-        const loc = savedLocations.find(l => String(l.id) === String(id));
-        if (!loc) return;
-        const radiusKm = parseFloat(document.getElementById('circle-radius').value);
-        const color = document.getElementById('circle-color').value;
-        if (radiusKm > 0) {
-            loc.circle = { radiusKm, color };
-        } else {
-            delete loc.circle;
-        }
-        refreshUI();
-        closeCircleModal();
-    }
+		function closeCircleModal() {
+			document.getElementById('circleModal').style.display = 'none';
+}
 
-    function deleteCircle() {
-        const id = document.getElementById('circle-point-id').value;
-        const loc = savedLocations.find(l => String(l.id) === String(id));
-        if (loc) {
-            delete loc.circle;
-            refreshUI();
-        }
-        closeCircleModal();
-    }
+		// Affiche la liste des cercles avec boutons Supprimer/Masquer
+		function renderCirclesList(point) {
+			const list = document.getElementById('existing-circles-list');
+			list.innerHTML = point.circles.length === 0 ? '<p style="text-align:center; color:#999;">Aucun cercle pour ce point</p>' : '';
+			
+			point.circles.forEach((circle, index) => {
+				const div = document.createElement('div');
+				div.style = "display:flex; align-items:center; gap:10px; margin-bottom:8px; padding:8px; background:white; border:1px solid #ddd; border-radius:8px;";
+				
+				// Couleur de remplissage et contour
+				const fillColor = circle.fillColor || circle.color;
+				const borderColor = circle.borderColor || circle.color;
+				const borderWeight = circle.borderWeight || 2;
+				
+				div.innerHTML = `
+					<div style="width:25px; height:25px; border-radius:50%; background:${fillColor}; border:${borderWeight}px solid ${borderColor};"></div>
+					<div style="flex:1; font-size:0.9rem;">
+						<strong>${circle.radius} km</strong><br>
+						<small style="color:#666;">Contour: ${borderWeight}px</small>
+					</div>
+					<div style="display:flex; gap:5px;">
+						<button class="icon-btn" onclick="editCircleAtIndex(${point.id}, ${index})" title="Modifier" style="background:#3498db; color:white; border-radius:4px; padding:4px 8px; cursor:pointer;">✏️</button>
+						<button class="icon-btn" onclick="removeCircle(${point.id}, ${index})" title="Supprimer" style="background:#e74c3c; color:white; border-radius:4px; padding:4px 8px; cursor:pointer;">🗑️</button>
+					</div>
+				`;
+				list.appendChild(div);
+			});
+		}
+
+		function editCircleAtIndex(pointId, circleIndex) {
+			const point = savedLocations.find(p => p.id == pointId);
+			if (!point || !point.circles[circleIndex]) return;
+			
+			const circle = point.circles[circleIndex];
+			
+			// Remplir la modale d'édition
+			document.getElementById('edit-circle-point-id').value = pointId;
+			document.getElementById('edit-circle-index').value = circleIndex;
+			document.getElementById('edit-circle-radius').value = circle.radius;
+			document.getElementById('edit-circle-fill-color').value = circle.fillColor || circle.color;
+			document.getElementById('edit-circle-border-color').value = circle.borderColor || circle.color;
+			document.getElementById('edit-circle-border-weight').value = circle.borderWeight || 2;
+			
+			document.getElementById('editCircleModal').style.display = 'flex';
+		}
+
+		function closeEditCircleModal() {
+			document.getElementById('editCircleModal').style.display = 'none';
+		}
+
+		function saveCircleChanges() {
+			const pointId = document.getElementById('edit-circle-point-id').value;
+			const circleIndex = parseInt(document.getElementById('edit-circle-index').value);
+			const point = savedLocations.find(p => p.id == pointId);
+			
+			if (!point || !point.circles[circleIndex]) return;
+			
+			const newRadius = parseFloat(document.getElementById('edit-circle-radius').value);
+			const newFillColor = document.getElementById('edit-circle-fill-color').value;
+			const newBorderColor = document.getElementById('edit-circle-border-color').value;
+			const newBorderWeight = parseFloat(document.getElementById('edit-circle-border-weight').value);
+			
+			if (isNaN(newRadius) || newRadius <= 0) {
+				alert("Veuillez saisir un rayon valide (> 0)");
+				return;
+			}
+			
+			// Supprimer l'ancien layer
+			if (point.circles[circleIndex].layer) {
+				map.removeLayer(point.circles[circleIndex].layer);
+			}
+			
+			// Mettre à jour les données
+			point.circles[circleIndex] = {
+				radius: newRadius,
+				fillColor: newFillColor,
+				borderColor: newBorderColor,
+				borderWeight: newBorderWeight,
+				color: newFillColor, // Compatibilité ancien format
+				layer: null
+			};
+			
+			// Créer le nouveau cercle
+			const circleLayer = L.circle([point.lat, point.lon], {
+				radius: newRadius * 1000,
+				color: newBorderColor,
+				fillColor: newFillColor,
+				fillOpacity: 0.2,
+				weight: newBorderWeight,
+				opacity: 0.8,
+				interactive: false
+			}).addTo(map);
+			
+			point.circles[circleIndex].layer = circleLayer;
+			
+			closeEditCircleModal();
+			// Rafraîchir l'affichage de la liste des cercles
+			renderCirclesList(point);
+		}
+
+		function addNewCircleToPoint() {
+			const pointId = document.getElementById('circle-point-id').value;
+			const radius = parseFloat(document.getElementById('new-circle-radius').value);
+			const fillColor = document.getElementById('new-circle-color').value;
+			const borderColor = document.getElementById('new-circle-border-color').value;
+			const borderWeight = parseFloat(document.getElementById('new-circle-border-weight').value);
+			
+			if (isNaN(radius) || radius <= 0) {
+				alert("Veuillez saisir un rayon valide (> 0)");
+				return;
+			}
+			
+			const point = savedLocations.find(p => p.id == pointId);
+			if (!point) return;
+			
+			// Création du cercle Leaflet
+			const circleLayer = L.circle([point.lat, point.lon], {
+				radius: radius * 1000,
+				color: borderColor,
+				fillColor: fillColor,
+				fillOpacity: 0.2,
+				weight: borderWeight,
+				opacity: 0.8,
+				interactive: false
+			}).addTo(map);
+			
+			// Stockage dans les données du point
+			if (!point.circles) point.circles = [];
+			
+			point.circles.push({
+				radius: radius,
+				fillColor: fillColor,
+				borderColor: borderColor,
+				borderWeight: borderWeight,
+				color: fillColor, // Compatibilité ancien format
+				layer: circleLayer
+			});
+			
+			renderCirclesList(point);
+			
+			// Réinitialiser les champs par défaut
+			document.getElementById('new-circle-radius').value = "5";
+			document.getElementById('new-circle-color').value = "#3388ff";
+			document.getElementById('new-circle-border-color').value = "#3388ff";
+			document.getElementById('new-circle-border-weight').value = "2";
+		}
+
+		// Supprime un cercle spécifique
+		function removeCircle(pointId, index) {
+			const point = savedLocations.find(p => p.id == pointId);
+			if (!point || !point.circles[index]) return;
+			
+			const circle = point.circles[index];
+			if (circle.layer) map.removeLayer(circle.layer);
+			point.circles.splice(index, 1);
+			
+			renderCirclesList(point);
+		}
+
+
+		// Fermer la modale d'édition
+		function closeEditCircleModal() {
+			document.getElementById('editCircleModal').style.display = 'none';
+		}
 
     // --- ISOCHRONES ---
     function openIsochroneModal(id) {
@@ -2234,10 +2507,11 @@ function saveModalChanges() {
 
 function refreshUI() {
     markersLayer.clearLayers();
-    savedLocations.forEach(renderPointOnMap);
+    savedLocations.forEach(loc => {
+        // On s'assure que les cercles sont recréés à partir du tableau circles
+        renderPointOnMap(loc);
+    });
     updateSidebar();
-    
-    // S'assurer que les communes conservent leur état de visibilité
     selectedCommunes.forEach(com => {
         if (com._mapLayer) {
             if (com.visible && !map.hasLayer(com._mapLayer)) {
@@ -2273,308 +2547,458 @@ function focusPoint(id) {
     }
 }
 
-// --- EXPORT EXCEL ---
-async function exportToExcel() {
-    if (!ensureXLSX()) return;
+	// --- EXPORT EXCEL ---
+		async function exportToExcel() {
+			if (!ensureXLSX()) return;
 
-    // 1. Préparation des données des Points
-    const pointsData = savedLocations.map(l => {
-        const layer = layers.find(ly => ly.id === l.layerId) || layers[0];
-        return {
-            "Titre de la Carte": document.getElementById('map-title').innerText,
-            "Nom du lieu": l.titre,
-            "Numéro": l.numero,
-            "Rue": l.rue,
-            "Code Postal": l.cp,
-            "Ville": l.ville,
-            "Latitude": l.lat,
-            "Longitude": l.lon,
-            "Catégorie": l.categorie,
-            "Couleur": categories[l.categorie],
-            "Couche": layer.name,
-            "Couleur couche": layer.color,
-            "Type d'icône": l.iconType || 'circle',
-            "Emoji": l.emoji || '😊',
-            "Popup toujours visible": l.popupAlwaysOn ? "true" : "false",
-            "Point visible": l.visible === false ? "false" : "true",
-            "Rayon cercle (km)": l.circle ? l.circle.radiusKm : "",
-            "Couleur cercle": l.circle ? l.circle.color : "",
-            "Isochrone": l.isochrone ? JSON.stringify(l.isochrone) : ""
-        };
-    });
+			// 1. Préparation des données des Points
+			const pointsData = savedLocations.map(l => {
+				const layer = layers.find(ly => ly.id === l.layerId) || layers[0];
+				
+				// Sérialiser les cercles multiples
+				let circlesSerialized = "";
+				if (l.circles && l.circles.length > 0) {
+					circlesSerialized = JSON.stringify(l.circles.map(c => ({
+						radius: c.radius,
+						fillColor: c.fillColor || c.color,
+						borderColor: c.borderColor || c.color,
+						borderWeight: c.borderWeight || 2
+					})));
+				} else if (l.circle) {
+					// Compatibilité ancien format
+					circlesSerialized = JSON.stringify([{
+						radius: l.circle.radiusKm,
+						fillColor: l.circle.color,
+						borderColor: l.circle.color,
+						borderWeight: 2
+					}]);
+				}
+				
+				return {
+					"Titre de la Carte": document.getElementById('map-title').innerText,
+					"Nom du lieu": l.titre,
+					"Numéro": l.numero,
+					"Rue": l.rue,
+					"Code Postal": l.cp,
+					"Ville": l.ville,
+					"Latitude": l.lat,
+					"Longitude": l.lon,
+					"Catégorie": l.categorie,
+					"Couleur": categories[l.categorie],
+					"Couche": layer.name,
+					"Couleur couche": layer.color,
+					"Type d'icône": l.iconType || 'circle',
+					"Emoji": l.emoji || '😊',
+					"Popup toujours visible": l.popupAlwaysOn ? "true" : "false",
+					"Point visible": l.visible === false ? "false" : "true",
+					"Cercles (JSON)": circlesSerialized,
+					"Isochrone": l.isochrone ? JSON.stringify(l.isochrone) : ""
+				};
+			});
 
-    // 2. Préparation des données des Communes
-    const communesData = selectedCommunes.map(c => {
-        const layer = communeLayers.find(ly => ly.id === c.layerId) || communeLayers[0];
-        const currentStyle = c._mapLayer.options;
-        return {
-            "Code INSEE": c.code,
-            "Nom": c.nom,
-            "Département": c.departement,
-            "Population": c.population,
-            "Couche": layer.name,
-            "Couleur couche": layer.color,
-            "Couleur limite": currentStyle.color || "#27ae60",
-            "Opacité": currentStyle.fillOpacity || 0.5,
-            "Code Postal": c.cp || "",
-            "Superficie (km²)": c.superficie || "",
-            "Altitude (m)": c.altitude || "",
-            "Densité (hab/km²)": c.densite || "",
-            "Notes": c.notes || ""
-        };
-    });
+			// 2. Préparation des données des Communes
+			const communesData = selectedCommunes.map(c => {
+				const layer = communeLayers.find(ly => ly.id === c.layerId) || communeLayers[0];
+				const currentStyle = c._mapLayer ? c._mapLayer.options : {};
+				return {
+					"Code INSEE": c.code,
+					"Nom": c.nom,
+					"Département": c.departement,
+					"Population": c.population,
+					"Couche": layer.name,
+					"Couleur couche": layer.color,
+					"Couleur limite": currentStyle.color || "#27ae60",
+					"Opacité": currentStyle.fillOpacity || 0.5,
+					"Code Postal": c.cp || "",
+					"Superficie (km²)": c.superficie || "",
+					"Altitude (m)": c.altitude || "",
+					"Densité (hab/km²)": c.densite || "",
+					"Notes": c.notes || ""
+				};
+			});
 
-    // 3. Préparation des données des Départements
-    const deptsData = [];
-    Object.keys(activeDeptLayers).forEach(deptCode => {
-        const layer = activeDeptLayers[deptCode];
-        const container = document.getElementById(`container-dept-${deptCode}`);
-        const nomFull = container ? container.querySelector('span:nth-child(3)').innerText : "";
-        const deptNom = nomFull.replace('- ', '').trim();
-        
-        const layers = layer.getLayers ? layer.getLayers() : [];
-        const currentStyle = layers.length > 0 ? layers[0].options : layer.options;
+			// 3. Préparation des données des Départements
+			const deptsData = [];
+			Object.keys(activeDeptLayers).forEach(deptCode => {
+				const layer = activeDeptLayers[deptCode];
+				const container = document.getElementById(`container-dept-${deptCode}`);
+				const nomFull = container ? container.querySelector('span:nth-child(3)').innerText : "";
+				const deptNom = nomFull.replace('- ', '').trim();
+				
+				const layers = layer.getLayers ? layer.getLayers() : [];
+				const currentStyle = layers.length > 0 ? layers[0].options : layer.options;
+				
+				// Récupérer les styles sauvegardés
+				const fillColor = currentStyle.fillColor || currentStyle.color || "#34495e";
+				const strokeColor = currentStyle.color || "#34495e";
+				const fillOpacity = currentStyle.fillOpacity || 0.5;
+				const strokeOpacity = currentStyle.opacity !== undefined ? currentStyle.opacity : 1.0;
+				const strokeWeight = currentStyle.weight !== undefined ? currentStyle.weight : 2;
+				const strokeStyle = currentStyle.dashArray ? getStrokeStyleFromDashArray(currentStyle.dashArray) : "solid";
 
-        deptsData.push({
-            "Code département": deptCode,
-            "Nom département": deptNom,
-            "Couleur limites": currentStyle.color || "#34495e",
-            "Opacité": currentStyle.fillOpacity || 0.5,
-            "Actif": "true"
-        });
-    });
+				deptsData.push({
+					"Code département": deptCode,
+					"Nom département": deptNom,
+					"Couleur fond": fillColor,
+					"Couleur contour": strokeColor,
+					"Opacité fond": fillOpacity,
+					"Opacité contour": strokeOpacity,
+					"Épaisseur contour": strokeWeight,
+					"Type trait": strokeStyle,
+					"Actif": "true"
+				});
+			});
 
-    // --- MODIFICATION ICI : On vérifie si on a AU MOINS une donnée quelque part ---
-    if (pointsData.length === 0 && communesData.length === 0 && deptsData.length === 0) {
-        alert("La carte est vide. Rien à enregistrer.");
-        return;
-    }
+			// 4. Export des couches
+			const layersData = layers.map(layer => ({
+				"ID": layer.id,
+				"Nom": layer.name,
+				"Couleur": layer.color,
+				"Visible": layer.visible ? "true" : "false"
+			}));
 
-    const wb = XLSX.utils.book_new();
-    
-    // On ajoute les feuilles seulement si elles contiennent des données
-    if (pointsData.length > 0) {
-        const wsPoints = XLSX.utils.json_to_sheet(pointsData);
-        XLSX.utils.book_append_sheet(wb, wsPoints, "Points");
-    }
-    
-    if (communesData.length > 0) {
-        const wsCommunes = XLSX.utils.json_to_sheet(communesData);
-        XLSX.utils.book_append_sheet(wb, wsCommunes, "Communes");
-    }
-    
-    if (deptsData.length > 0) {
-        const wsDepts = XLSX.utils.json_to_sheet(deptsData);
-        XLSX.utils.book_append_sheet(wb, wsDepts, "Départements");
-    }
+			if (layersData.length > 0) {
+				const wsLayers = XLSX.utils.json_to_sheet(layersData);
+				XLSX.utils.book_append_sheet(wb, wsLayers, "Couches");
+			}
 
-    // Génération et téléchargement du fichier
-    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([wbout], { type: 'application/octet-stream' });
-    const defaultName = document.getElementById('map-title').innerText.trim() || 'MonProjet';
-    const fileName = defaultName + '.xlsx';
 
-    // Tentative de sauvegarde (Navigateurs modernes ou secours)
-    if ('showSaveFilePicker' in window) {
-        try {
-            const handle = await window.showSaveFilePicker({
-                suggestedName: fileName,
-                types: [{
-                    description: 'Fichier Excel',
-                    accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
-                }]
-            });
-            const writable = await handle.createWritable();
-            await writable.write(blob);
-            await writable.close();
-        } catch (err) {
-            if (err.name !== 'AbortError') fallbackDownload(blob, fileName);
-        }
-    } else {
-        fallbackDownload(blob, fileName);
-    }
-}
+			// Vérification des données
+			if (pointsData.length === 0 && communesData.length === 0 && deptsData.length === 0) {
+				alert("La carte est vide. Rien à enregistrer.");
+				return;
+			}
 
-// --- IMPORT EXCEL ---
-async function importFromExcel(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+			const wb = XLSX.utils.book_new();
+			
+			if (pointsData.length > 0) {
+				const wsPoints = XLSX.utils.json_to_sheet(pointsData);
+				XLSX.utils.book_append_sheet(wb, wsPoints, "Points");
+			}
+			
+			if (communesData.length > 0) {
+				const wsCommunes = XLSX.utils.json_to_sheet(communesData);
+				XLSX.utils.book_append_sheet(wb, wsCommunes, "Communes");
+			}
+			
+			if (deptsData.length > 0) {
+				const wsDepts = XLSX.utils.json_to_sheet(deptsData);
+				XLSX.utils.book_append_sheet(wb, wsDepts, "Départements");
+			}
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
+			// Génération et téléchargement du fichier
+			const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+			const blob = new Blob([wbout], { type: 'application/octet-stream' });
+			const defaultName = document.getElementById('map-title').innerText.trim() || 'MonProjet';
+			const fileName = defaultName + '.xlsx';
 
-            // 1. IMPORT DES POINTS (Feuille "Points")
-            if (workbook.SheetNames.includes("Points")) {
-                const ws = workbook.Sheets["Points"];
-                const json = XLSX.utils.sheet_to_json(ws);
-                
-                // On vide l'existant
-                savedLocations.forEach(l => {
-                    if (l._markerId) markersLayer.removeLayer(l._markerId);
-                    if (l.circle && l.circle._layerId) map.removeLayer(l.circle._layerId);
-                    if (l.isochrone && l.isochrone._layerId) map.removeLayer(l.isochrone._layerId);
-                });
-                savedLocations = [];
+			if ('showSaveFilePicker' in window) {
+				try {
+					const handle = await window.showSaveFilePicker({
+						suggestedName: fileName,
+						types: [{
+							description: 'Fichier Excel',
+							accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
+						}]
+					});
+					const writable = await handle.createWritable();
+					await writable.write(blob);
+					await writable.close();
+				} catch (err) {
+					if (err.name !== 'AbortError') fallbackDownload(blob, fileName);
+				}
+			} else {
+				fallbackDownload(blob, fileName);
+			}
+		}
 
-                json.forEach(row => {
-                    const lat = parseFloat(row["Latitude"]);
-                    const lon = parseFloat(row["Longitude"]);
-                    if (isNaN(lat) || isNaN(lon)) return;
+	// --- IMPORT EXCEL ---
+	async function importFromExcel(event) {
+		const file = event.target.files[0];
+		if (!file) return;
 
-                    const loc = {
-                        id: generateId(),
-                        titre: row["Nom du lieu"] || "Sans titre",
-                        numero: row["Numéro"] || "",
-                        rue: row["Rue"] || "",
-                        cp: row["Code Postal"] || "",
-                        ville: row["Ville"] || "",
-                        lat: lat,
-                        lon: lon,
-                        categorie: row["Catégorie"] || "Par défaut",
-                        layerId: 'default', // Par défaut, sera ajusté si la couche existe
-                        iconType: row["Type d'icône"] || "circle",
-                        emoji: row["Emoji"] || "😊",
-                        popupAlwaysOn: row["Popup toujours visible"] === "true",
-                        visible: row["Point visible"] !== "false"
-                    };
+		const reader = new FileReader();
+		reader.onload = async (e) => {
+			try {
+				const data = new Uint8Array(e.target.result);
+				const workbook = XLSX.read(data, { type: 'array' });
 
-                    // Restauration du cercle
-                    if (row["Rayon cercle (km)"]) {
-                        loc.circle = {
-                            radiusKm: parseFloat(row["Rayon cercle (km)"]),
-                            color: row["Couleur cercle"] || "#3388ff"
-                        };
-                    }
-                    
-                    savedLocations.push(loc);
-                });
-            }
+				// 1. IMPORT DES POINTS (Feuille "Points")
+				if (workbook.SheetNames.includes("Points")) {
+					const ws = workbook.Sheets["Points"];
+					const json = XLSX.utils.sheet_to_json(ws);
+					
+					// Nettoyage des points existants
+					savedLocations.forEach(l => {
+						if (l._markerId) markersLayer.removeLayer(l._markerId);
+						if (l.circles) {
+							l.circles.forEach(c => {
+								if (c.layer) map.removeLayer(c.layer);
+							});
+						}
+					});
+					savedLocations = [];
+					
+					// Récupérer toutes les catégories uniques du fichier Excel
+					const importedCategories = new Map();
+					
+					json.forEach(row => {
+						const categorie = row["Catégorie"];
+						const couleur = row["Couleur"];
+						
+						if (categorie && couleur) {
+							importedCategories.set(categorie, couleur);
+						}
+					});
+					
+					// Ajouter les catégories importées à l'objet global categories
+					// On garde la catégorie "Par défaut" existante
+					const defaultCategory = categories["Par défaut"];
+					categories = {};
+					categories["Par défaut"] = defaultCategory;
+					
+					importedCategories.forEach((couleur, nom) => {
+						categories[nom] = couleur;
+					});
+					
+					// Maintenant importer les points
+					json.forEach(row => {
+						const lat = parseFloat(row["Latitude"]);
+						const lon = parseFloat(row["Longitude"]);
+						if (isNaN(lat) || isNaN(lon)) return;
+						
+						let categorie = row["Catégorie"] || "Par défaut";
+						// Vérifier que la catégorie existe dans l'objet categories
+						if (!categories[categorie]) {
+							categories[categorie] = row["Couleur"] || "#e74c3c";
+						}
 
-            // 3. IMPORT DES DÉPARTEMENTS EN PREMIER (pour avoir les contours disponibles)
-            if (workbook.SheetNames.includes("Départements")) {
-                const ws = workbook.Sheets["Départements"];
-                const json = XLSX.utils.sheet_to_json(ws);
+						const loc = {
+							id: generateId(),
+							titre: row["Nom du lieu"] || "Sans titre",
+							numero: row["Numéro"] || "",
+							rue: row["Rue"] || "",
+							cp: row["Code Postal"] || "",
+							ville: row["Ville"] || "",
+							lat: lat,
+							lon: lon,
+							categorie: categorie,
+							layerId: 'default',
+							iconType: row["Type d'icône"] || "circle",
+							emoji: row["Emoji"] || "😊",
+							popupAlwaysOn: row["Popup toujours visible"] === "true",
+							visible: row["Point visible"] !== "false"
+						};
 
-                // Nettoyage départements existants
-                Object.keys(activeDeptLayers).forEach(code => {
-                    map.removeLayer(activeDeptLayers[code]);
-                });
-                activeDeptLayers = {};
-                document.getElementById('dept-buttons-container').innerHTML = '';
+						// Restauration des cercles multiples
+						const circlesJson = row["Cercles (JSON)"];
+						if (circlesJson && typeof circlesJson === 'string') {
+							try {
+								const circlesData = JSON.parse(circlesJson);
+								if (Array.isArray(circlesData) && circlesData.length > 0) {
+									loc.circles = circlesData.map(c => ({
+										radius: c.radius,
+										fillColor: c.fillColor || c.color,
+										borderColor: c.borderColor || c.color,
+										borderWeight: c.borderWeight || 2,
+										color: c.fillColor || c.color,
+										layer: null
+									}));
+								}
+							} catch (e) {
+								console.warn("Erreur parsing JSON des cercles:", e);
+							}
+						} else if (row["Rayon cercle (km)"]) {
+							loc.circles = [{
+								radius: parseFloat(row["Rayon cercle (km)"]),
+								fillColor: row["Couleur cercle"] || "#3388ff",
+								borderColor: row["Couleur cercle"] || "#3388ff",
+								borderWeight: 2,
+								color: row["Couleur cercle"] || "#3388ff",
+								layer: null
+							}];
+						}
 
-                for (const row of json) {
-                    const code = row["Code département"];
-                    const nom = row["Nom département"];
-                    if (code && row["Actif"] === "true") {
-                        await addDepartmentByCode(code, nom, row["Couleur limites"], parseFloat(row["Opacité"]));
-                    }
-                }
-            }
+						// Restauration de l'isochrone
+						if (row["Isochrone"]) {
+							try {
+								loc.isochrone = JSON.parse(row["Isochrone"]);
+							} catch (e) {}
+						}
+						
+						savedLocations.push(loc);
+					});
+				}
 
-            // 2. IMPORT DES COMMUNES : on cherche le contour dans les calques déjà chargés
-            if (workbook.SheetNames.includes("Communes")) {
-                const ws = workbook.Sheets["Communes"];
-                const json = XLSX.utils.sheet_to_json(ws);
+				// 2. IMPORT DES DÉPARTEMENTS
+				if (workbook.SheetNames.includes("Départements")) {
+					const ws = workbook.Sheets["Départements"];
+					const json = XLSX.utils.sheet_to_json(ws);
 
-                // Nettoyage communes actuelles
-                selectedCommunes.forEach(c => { if (c._mapLayer) map.removeLayer(c._mapLayer); });
-                selectedCommunes = [];
+					Object.keys(activeDeptLayers).forEach(code => {
+						map.removeLayer(activeDeptLayers[code]);
+					});
+					activeDeptLayers = {};
+					document.getElementById('dept-buttons-container').innerHTML = '';
 
-                for (const row of json) {
-                    const code = String(row["Code INSEE"] || "").trim();
-                    if (!code) continue;
+					for (const row of json) {
+						const code = row["Code département"];
+						const nom = row["Nom département"];
+						if (code && row["Actif"] === "true") {
+							const fillColor = row["Couleur fond"] || "#34495e";
+							const strokeColor = row["Couleur contour"] || "#34495e";
+							const fillOpacity = parseFloat(row["Opacité fond"]) || 0.5;
+							const strokeOpacity = parseFloat(row["Opacité contour"]) || 1.0;
+							const strokeWeight = parseFloat(row["Épaisseur contour"]) || 2;
+							const strokeStyle = row["Type trait"] || "solid";
+							
+							await addDepartmentWithStyles(code, nom, fillColor, strokeColor, fillOpacity, strokeOpacity, strokeWeight, strokeStyle);
+						}
+					}
+				}
 
-                    const color = row["Couleur limite"] || "#27ae60";
-                    const opacity = parseFloat(row["Opacité"]) || 0.5;
+				// 3. IMPORT DES COMMUNES
+				if (workbook.SheetNames.includes("Communes")) {
+					const ws = workbook.Sheets["Communes"];
+					const json = XLSX.utils.sheet_to_json(ws);
 
-                    // Chercher le feature dans le calque département déjà chargé
-                    const deptCode = code.substring(0, 2);
-                    let foundFeature = null;
-                    let foundLayer = null;
+					selectedCommunes.forEach(c => { if (c._mapLayer) map.removeLayer(c._mapLayer); });
+					selectedCommunes = [];
 
-                    if (activeDeptLayers[deptCode]) {
-                        activeDeptLayers[deptCode].eachLayer(function(l) {
-                            if (l.feature && l.feature.properties && String(l.feature.properties.code) === code) {
-                                foundFeature = l.feature;
-                                foundLayer = l;
-                            }
-                        });
-                    }
+					for (const row of json) {
+						const code = String(row["Code INSEE"] || "").trim();
+						if (!code) continue;
 
-                    if (foundFeature && foundLayer) {
-                        // Créer la couche commune à partir du contour déjà en mémoire
-                        const communeLayer = L.geoJSON(foundFeature, {
-                            style: { color: color, fillColor: color, fillOpacity: opacity, weight: 2, dashArray: '3' },
-                            interactive: true
-                        }).addTo(map);
-                        communeLayer.bindTooltip(`<b>${row["Nom"]}</b> (${code})`, { sticky: true });
+						const color = row["Couleur limite"] || "#27ae60";
+						const opacity = parseFloat(row["Opacité"]) || 0.5;
 
-                        selectedCommunes.push({
-                            code: code,
-                            nom: row["Nom"],
-                            departement: row["Département"],
-                            population: row["Population"],
-                            cp: row["Code Postal"] || "",
-                            superficie: row["Superficie (km²)"] || "",
-                            altitude: row["Altitude (m)"] || "",
-                            densite: row["Densité (hab/km²)"] || "",
-                            notes: row["Notes"] || "",
-                            layerId: 'com-default',
-                            _mapLayer: communeLayer,
-                            visible: true
-                        });
-                    } else {
-                        // Repli : tenter l'API individuelle (avec timeout)
-                        try {
-                            const controller = new AbortController();
-                            const timeout = setTimeout(() => controller.abort(), 8000);
-                            const resp = await fetch(
-                                `https://geo.api.gouv.fr/communes/${code}?format=geojson&geometry=contour`,
-                                { signal: controller.signal }
-                            );
-                            clearTimeout(timeout);
-                            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                            const data = await resp.json();
-                            const communeLayer = L.geoJSON(data, {
-                                style: { color: color, fillColor: color, fillOpacity: opacity, weight: 2 }
-                            }).addTo(map);
-                            selectedCommunes.push({
-                                code: code,
-                                nom: row["Nom"],
-                                departement: row["Département"],
-                                population: row["Population"],
-                                cp: row["Code Postal"] || "",
-                                superficie: row["Superficie (km²)"] || "",
-                                altitude: row["Altitude (m)"] || "",
-                                densite: row["Densité (hab/km²)"] || "",
-                                notes: row["Notes"] || "",
-                                layerId: 'com-default',
-                                _mapLayer: communeLayer,
-                                visible: true
-                            });
-                        } catch (err) {
-                            console.warn(`Commune ${code} (${row["Nom"]}) non importée :`, err.message);
-                        }
-                    }
-                }
-            }
+						const deptCode = code.substring(0, 2);
+						let foundFeature = null;
+						let foundLayer = null;
 
-            // Finalisation
-            refreshUI();
-            updateCommunesUI();
-            updateCounters();
-            alert("Importation terminée avec succès !");
+						if (activeDeptLayers[deptCode]) {
+							activeDeptLayers[deptCode].eachLayer(function(l) {
+								if (l.feature && l.feature.properties && String(l.feature.properties.code) === code) {
+									foundFeature = l.feature;
+									foundLayer = l;
+								}
+							});
+						}
 
-        } catch (err) {
-            console.error(err);
-            alert("Erreur lors de l'importation : " + err.message);
-        }
-    };
-    reader.readAsArrayBuffer(file);
-}
+						if (foundFeature && foundLayer) {
+							const communeLayer = L.geoJSON(foundFeature, {
+								style: { color: color, fillColor: color, fillOpacity: opacity, weight: 2, dashArray: '3' },
+								interactive: true
+							}).addTo(map);
+							communeLayer.bindTooltip(`<b>${row["Nom"]}</b> (${code})`, { sticky: true });
+
+							selectedCommunes.push({
+								code: code,
+								nom: row["Nom"],
+								departement: row["Département"],
+								population: row["Population"],
+								cp: row["Code Postal"] || "",
+								superficie: row["Superficie (km²)"] || "",
+								altitude: row["Altitude (m)"] || "",
+								densite: row["Densité (hab/km²)"] || "",
+								notes: row["Notes"] || "",
+								layerId: 'com-default',
+								_mapLayer: communeLayer,
+								visible: true
+							});
+						} else {
+							try {
+								const controller = new AbortController();
+								const timeout = setTimeout(() => controller.abort(), 8000);
+								const resp = await fetch(
+									`https://geo.api.gouv.fr/communes/${code}?format=geojson&geometry=contour`,
+									{ signal: controller.signal }
+								);
+								clearTimeout(timeout);
+								if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+								const data = await resp.json();
+								const communeLayer = L.geoJSON(data, {
+									style: { color: color, fillColor: color, fillOpacity: opacity, weight: 2 }
+								}).addTo(map);
+								selectedCommunes.push({
+									code: code,
+									nom: row["Nom"],
+									departement: row["Département"],
+									population: row["Population"],
+									cp: row["Code Postal"] || "",
+									superficie: row["Superficie (km²)"] || "",
+									altitude: row["Altitude (m)"] || "",
+									densite: row["Densité (hab/km²)"] || "",
+									notes: row["Notes"] || "",
+									layerId: 'com-default',
+									_mapLayer: communeLayer,
+									visible: true
+								});
+							} catch (err) {
+								console.warn(`Commune ${code} (${row["Nom"]}) non importée :`, err.message);
+							}
+						}
+					}
+				}
+
+				// 4. IMPORT DES COUCHES (si présentes)
+				if (workbook.SheetNames.includes("Couches")) {
+					const ws = workbook.Sheets["Couches"];
+					const json = XLSX.utils.sheet_to_json(ws);
+					
+					if (json.length > 0) {
+						const newLayers = [];
+						json.forEach(row => {
+							if (row["Nom"]) {
+								newLayers.push({
+									id: row["ID"] || generateId(),
+									name: row["Nom"],
+									color: row["Couleur"] || "#808080",
+									visible: row["Visible"] !== "false"
+								});
+							}
+						});
+						if (newLayers.length > 0) {
+							layers = newLayers;
+						}
+					}
+				}
+
+				// Rafraîchir l'interface avec les nouvelles catégories
+				refreshUI();
+				updateCommunesUI();
+				updateCounters();
+				
+				// Recharger les sélecteurs de catégories dans l'édition
+				refreshCategorySelectors();
+				
+				alert("Importation terminée avec succès !");
+
+			} catch (err) {
+				console.error(err);
+				alert("Erreur lors de l'importation : " + err.message);
+			}
+		};
+		reader.readAsArrayBuffer(file);
+	}
+
+	// Fonction pour rafraîchir les sélecteurs de catégories
+	function refreshCategorySelectors() {
+		// Mettre à jour le sélecteur de catégorie dans la modale d'édition
+		const catSelect = document.getElementById('edit-categorie');
+		if (catSelect) {
+			const currentValue = catSelect.value;
+			catSelect.innerHTML = '';
+			Object.keys(categories).forEach(cat => {
+				const opt = document.createElement('option');
+				opt.value = cat;
+				opt.textContent = cat;
+				if (cat === currentValue) opt.selected = true;
+				catSelect.appendChild(opt);
+			});
+		}
+	}
+
 
 // Fonction utilitaire pour aider l'import des départements
 async function addDepartmentByCode(code, nom, color, opacity) {
@@ -2608,7 +3032,41 @@ async function addDepartmentByCode(code, nom, color, opacity) {
     } catch (e) { console.error("Erreur import département", code, e); }
 }
 
+	// Fonction helper pour l'import des départements avec styles
+	async function addDepartmentWithStyles(code, nom, fillColor, strokeColor, fillOpacity, strokeOpacity, strokeWeight, strokeStyle) {
+		try {
+			const response = await fetch(`https://geo.api.gouv.fr/departements/${code}/communes?format=geojson&geometry=contour&simplify=0.001`);
+			if (!response.ok) throw new Error(`HTTP ${response.status}`);
+			const data = await response.json();
 
+			const dashArray = getDashArrayFromStyle(strokeStyle);
+
+			const layer = L.geoJSON(data, {
+				style: {
+					color: strokeColor,
+					fillColor: fillColor,
+					fillOpacity: fillOpacity,
+					opacity: strokeOpacity,
+					weight: strokeWeight,
+					dashArray: dashArray
+				},
+				onEachFeature: function(feature, layer) {
+					layer.on('click', function(e) {
+						L.DomEvent.stopPropagation(e);
+						addCommuneToList(feature.properties, layer);
+					});
+					layer.bindTooltip(feature.properties.nom, { sticky: true, opacity: 0.8 });
+				}
+			}).addTo(map);
+			layer.bringToBack();
+
+			activeDeptLayers[code] = layer;
+			createDeptButton(code, nom);
+			
+		} catch (e) { 
+			console.error("Erreur import département", code, e); 
+		}
+	}
 
     function ensureXLSX() {
         if (typeof XLSX !== 'undefined') return true;
@@ -2622,136 +3080,159 @@ async function addDepartmentByCode(code, nom, color, opacity) {
     }
 
     // --- EXPORT KML ---
-    function exportToKML() {
-        let kml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-        kml += '<kml xmlns="http://www.opengis.net/kml/2.2">\n';
-        kml += '  <Document>\n';
-        kml += `    <name>${escapeXML(document.getElementById('map-title').innerText)}</name>\n`;
+	function exportToKML() {
+			let kml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+			kml += '<kml xmlns="http://www.opengis.net/kml/2.2">\n';
+			kml += '  <Document>\n';
+			kml += `    <name>${escapeXML(document.getElementById('map-title').innerText)}</name>\n`;
 
-        const styleIds = {};
-        for (let cat in categories) {
-            const color = categories[cat];
-            const kmlColor = hexToKMLColor(color);
-            const styleId = `style_${cat.replace(/\s+/g, '_')}`;
-            styleIds[cat] = styleId;
-            kml += `    <Style id="${styleId}">\n`;
-            kml += `      <IconStyle>\n`;
-            kml += `        <color>${kmlColor}</color>\n`;
-            kml += `        <scale>1.0</scale>\n`;
-            kml += `        <Icon><href>http://maps.google.com/mapfiles/kml/pushpin/red-pushpin.png</href></Icon>\n`;
-            kml += `      </IconStyle>\n`;
-            kml += `      <LabelStyle>\n`;
-            kml += `        <color>${kmlColor}</color>\n`;
-            kml += `      </LabelStyle>\n`;
-            kml += `      <PolyStyle>\n`;
-            kml += `        <color>${kmlColor}66</color>\n`;
-            kml += `        <fill>1</fill>\n`;
-            kml += `        <outline>1</outline>\n`;
-            kml += `      </PolyStyle>\n`;
-            kml += `    </Style>\n`;
-        }
+			const styleIds = {};
+			for (let cat in categories) {
+				const color = categories[cat];
+				const kmlColor = hexToKMLColor(color);
+				const styleId = `style_${cat.replace(/\s+/g, '_')}`;
+				styleIds[cat] = styleId;
+				kml += `    <Style id="${styleId}">\n`;
+				kml += `      <IconStyle>\n`;
+				kml += `        <color>${kmlColor}</color>\n`;
+				kml += `        <scale>1.0</scale>\n`;
+				kml += `        <Icon><href>http://maps.google.com/mapfiles/kml/pushpin/red-pushpin.png</href></Icon>\n`;
+				kml += `      </IconStyle>\n`;
+				kml += `      <LabelStyle>\n`;
+				kml += `        <color>${kmlColor}</color>\n`;
+				kml += `      </LabelStyle>\n`;
+				kml += `      <PolyStyle>\n`;
+				kml += `        <color>${kmlColor}66</color>\n`;
+				kml += `        <fill>1</fill>\n`;
+				kml += `        <outline>1</outline>\n`;
+				kml += `      </PolyStyle>\n`;
+				kml += `    </Style>\n`;
+			}
 
-        savedLocations.forEach(loc => {
-            const cat = loc.categorie || "Par défaut";
-            const styleId = styleIds[cat] || '';
-            const layer = layers.find(l => l.id === loc.layerId) || layers[0];
+			savedLocations.forEach(loc => {
+				const cat = loc.categorie || "Par défaut";
+				const styleId = styleIds[cat] || '';
+				const layer = layers.find(l => l.id === loc.layerId) || layers[0];
 
-            kml += `    <Placemark>\n`;
-            kml += `      <name>${escapeXML(loc.titre)}</name>\n`;
-            kml += `      <description>${escapeXML(loc.numero + ' ' + loc.rue + '<br>' + loc.cp + ' ' + loc.ville)}</description>\n`;
-            kml += `      <styleUrl>#${styleId}</styleUrl>\n`;
-            kml += `      <ExtendedData>\n`;
-            kml += `        <Data name="categorie"><value>${escapeXML(cat)}</value></Data>\n`;
-            kml += `        <Data name="couche"><value>${escapeXML(layer.name)}</value></Data>\n`;
-            kml += `        <Data name="adresse"><value>${escapeXML(loc.numero + ' ' + loc.rue + ', ' + loc.cp + ' ' + loc.ville)}</value></Data>\n`;
-            kml += `        <Data name="latitude"><value>${loc.lat}</value></Data>\n`;
-            kml += `        <Data name="longitude"><value>${loc.lon}</value></Data>\n`;
-            if (loc.circle) {
-                kml += `        <Data name="cercle_rayon_km"><value>${loc.circle.radiusKm}</value></Data>\n`;
-                kml += `        <Data name="cercle_couleur"><value>${loc.circle.color}</value></Data>\n`;
-            }
-            if (loc.isochrone) {
-                kml += `        <Data name="isochrone_duree_min"><value>${loc.isochrone.duration}</value></Data>\n`;
-                kml += `        <Data name="isochrone_mode"><value>${loc.isochrone.mode}</value></Data>\n`;
-            }
-            kml += `      </ExtendedData>\n`;
-            kml += `      <Point><coordinates>${loc.lon},${loc.lat},0</coordinates></Point>\n`;
-            kml += `    </Placemark>\n`;
+				kml += `    <Placemark>\n`;
+				kml += `      <name>${escapeXML(loc.titre)}</name>\n`;
+				kml += `      <description>${escapeXML(loc.numero + ' ' + loc.rue + '<br>' + loc.cp + ' ' + loc.ville)}</description>\n`;
+				kml += `      <styleUrl>#${styleId}</styleUrl>\n`;
+				kml += `      <ExtendedData>\n`;
+				kml += `        <Data name="categorie"><value>${escapeXML(cat)}</value></Data>\n`;
+				kml += `        <Data name="couche"><value>${escapeXML(layer.name)}</value></Data>\n`;
+				kml += `        <Data name="adresse"><value>${escapeXML(loc.numero + ' ' + loc.rue + ', ' + loc.cp + ' ' + loc.ville)}</value></Data>\n`;
+				kml += `        <Data name="latitude"><value>${loc.lat}</value></Data>\n`;
+				kml += `        <Data name="longitude"><value>${loc.lon}</value></Data>\n`;
+				
+				// Export des cercles multiples
+				const circles = loc.circles || (loc.circle ? [loc.circle] : []);
+				if (circles.length > 0) {
+					kml += `        <Data name="cercles_json"><value>${escapeXML(JSON.stringify(circles.map(c => ({
+						radius: c.radius || c.radiusKm,
+						fillColor: c.fillColor || c.color,
+						borderColor: c.borderColor || c.color,
+						borderWeight: c.borderWeight || 2
+					}))))}</value></Data>\n`;
+				}
+				
+				if (loc.isochrone) {
+					kml += `        <Data name="isochrone_duree_min"><value>${loc.isochrone.duration}</value></Data>\n`;
+					kml += `        <Data name="isochrone_mode"><value>${loc.isochrone.mode}</value></Data>\n`;
+				}
+				kml += `      </ExtendedData>\n`;
+				kml += `      <Point><coordinates>${loc.lon},${loc.lat},0</coordinates></Point>\n`;
+				kml += `    </Placemark>\n`;
 
-            if (loc.circle && loc.circle.radiusKm > 0) {
-                const centerLat = loc.lat;
-                const centerLon = loc.lon;
-                const radiusM = loc.circle.radiusKm * 1000;
-                const points = [];
-                const steps = 36;
-                for (let i = 0; i <= steps; i++) {
-                    const angle = (i / steps) * 2 * Math.PI;
-                    const latOffset = (radiusM / 111111) * Math.sin(angle);
-                    const lonOffset = (radiusM / (111111 * Math.cos(centerLat * Math.PI / 180))) * Math.cos(angle);
-                    const lat = centerLat + latOffset;
-                    const lon = centerLon + lonOffset;
-                    points.push(`${lon},${lat},0`);
-                }
-                const kmlColor = hexToKMLColor(loc.circle.color);
-                kml += `    <Placemark>\n`;
-                kml += `      <name>Cercle de ${escapeXML(loc.titre)}</name>\n`;
-                kml += `      <description>Rayon : ${loc.circle.radiusKm} km</description>\n`;
-                kml += `      <Style>\n`;
-                kml += `        <PolyStyle>\n`;
-                kml += `          <color>${kmlColor}66</color>\n`;
-                kml += `          <fill>1</fill>\n`;
-                kml += `          <outline>1</outline>\n`;
-                kml += `        </PolyStyle>\n`;
-                kml += `      </Style>\n`;
-                kml += `      <Polygon>\n`;
-                kml += `        <outerBoundaryIs>\n`;
-                kml += `          <LinearRing>\n`;
-                kml += `            <coordinates>${points.join(' ')}</coordinates>\n`;
-                kml += `          </LinearRing>\n`;
-                kml += `        </outerBoundaryIs>\n`;
-                kml += `      </Polygon>\n`;
-                kml += `    </Placemark>\n`;
-            }
+				// Export de tous les cercles comme polygones KML
+				circles.forEach(circle => {
+					const radiusKm = circle.radius || circle.radiusKm;
+					if (radiusKm && radiusKm > 0) {
+						const centerLat = loc.lat;
+						const centerLon = loc.lon;
+						const radiusM = radiusKm * 1000;
+						const points = [];
+						const steps = 36;
+						for (let i = 0; i <= steps; i++) {
+							const angle = (i / steps) * 2 * Math.PI;
+							const latOffset = (radiusM / 111111) * Math.sin(angle);
+							const lonOffset = (radiusM / (111111 * Math.cos(centerLat * Math.PI / 180))) * Math.cos(angle);
+							const lat = centerLat + latOffset;
+							const lon = centerLon + lonOffset;
+							points.push(`${lon},${lat},0`);
+						}
+						
+						const fillColor = circle.fillColor || circle.color;
+						const borderColor = circle.borderColor || circle.color;
+						const borderWeight = circle.borderWeight || 2;
+						const kmlFillColor = hexToKMLColor(fillColor);
+						const kmlBorderColor = hexToKMLColor(borderColor);
+						
+						kml += `    <Placemark>\n`;
+						kml += `      <name>Cercle de ${escapeXML(loc.titre)} (${radiusKm} km)</name>\n`;
+						kml += `      <description>Rayon : ${radiusKm} km<br>Couleur contour: ${borderColor}<br>Épaisseur: ${borderWeight}px</description>\n`;
+						kml += `      <Style>\n`;
+						kml += `        <PolyStyle>\n`;
+						kml += `          <color>${kmlFillColor}66</color>\n`;
+						kml += `          <fill>1</fill>\n`;
+						kml += `          <outline>1</outline>\n`;
+						kml += `        </PolyStyle>\n`;
+						kml += `        <LineStyle>\n`;
+						kml += `          <color>${kmlBorderColor}</color>\n`;
+						kml += `          <width>${borderWeight}</width>\n`;
+						kml += `        </LineStyle>\n`;
+						kml += `      </Style>\n`;
+						kml += `      <Polygon>\n`;
+						kml += `        <outerBoundaryIs>\n`;
+						kml += `          <LinearRing>\n`;
+						kml += `            <coordinates>${points.join(' ')}</coordinates>\n`;
+						kml += `          </LinearRing>\n`;
+						kml += `        </outerBoundaryIs>\n`;
+						kml += `      </Polygon>\n`;
+						kml += `    </Placemark>\n`;
+					}
+				});
 
-            if (loc.isochrone && loc.isochrone.geometry && loc.isochrone.geometry.length > 0) {
-                const coords = loc.isochrone.geometry.map(p => `${p[0]},${p[1]},0`).join(' ');
-                const kmlColor = hexToKMLColor(loc.isochrone.color);
-                kml += `    <Placemark>\n`;
-                kml += `      <name>Isochrone ${loc.isochrone.duration} min (${loc.isochrone.mode})</name>\n`;
-                kml += `      <description>Depuis ${escapeXML(loc.titre)}</description>\n`;
-                kml += `      <Style>\n`;
-                kml += `        <PolyStyle>\n`;
-                kml += `          <color>${kmlColor}66</color>\n`;
-                kml += `          <fill>1</fill>\n`;
-                kml += `          <outline>1</outline>\n`;
-                kml += `        </PolyStyle>\n`;
-                kml += `      </Style>\n`;
-                kml += `      <Polygon>\n`;
-                kml += `        <outerBoundaryIs>\n`;
-                kml += `          <LinearRing>\n`;
-                kml += `            <coordinates>${coords}</coordinates>\n`;
-                kml += `          </LinearRing>\n`;
-                kml += `        </outerBoundaryIs>\n`;
-                kml += `      </Polygon>\n`;
-                kml += `    </Placemark>\n`;
-            }
-        });
+				// Export de l'isochrone
+				if (loc.isochrone && loc.isochrone.geometry && loc.isochrone.geometry.length > 0) {
+					const coords = loc.isochrone.geometry.map(p => `${p[0]},${p[1]},0`).join(' ');
+					const kmlColor = hexToKMLColor(loc.isochrone.color);
+					kml += `    <Placemark>\n`;
+					kml += `      <name>Isochrone ${loc.isochrone.duration} min (${loc.isochrone.mode})</name>\n`;
+					kml += `      <description>Depuis ${escapeXML(loc.titre)}</description>\n`;
+					kml += `      <Style>\n`;
+					kml += `        <PolyStyle>\n`;
+					kml += `          <color>${kmlColor}66</color>\n`;
+					kml += `          <fill>1</fill>\n`;
+					kml += `          <outline>1</outline>\n`;
+					kml += `        </PolyStyle>\n`;
+					kml += `      </Style>\n`;
+					kml += `      <Polygon>\n`;
+					kml += `        <outerBoundaryIs>\n`;
+					kml += `          <LinearRing>\n`;
+					kml += `            <coordinates>${coords}</coordinates>\n`;
+					kml += `          </LinearRing>\n`;
+					kml += `        </outerBoundaryIs>\n`;
+					kml += `      </Polygon>\n`;
+					kml += `    </Placemark>\n`;
+				}
+			});
 
-        kml += '  </Document>\n';
-        kml += '</kml>';
+			kml += '  </Document>\n';
+			kml += '</kml>';
 
-        const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = (document.getElementById('map-title').innerText.trim() || 'MonProjet') + '.kml';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-
-    function escapeXML(str) {
+			const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = (document.getElementById('map-title').innerText.trim() || 'MonProjet') + '.kml';
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+		}
+			
+	function escapeXML(str) {
         if (!str) return '';
         return str.replace(/[<>&'"]/g, function(c) {
             switch(c) {
@@ -2897,78 +3378,78 @@ async function addDepartmentByCode(code, nom, color, opacity) {
         }
     }
 
-// --- GESTION DÉPARTEMENTS (recherche) ---
-async function searchDepartment() {
-    const code = document.getElementById('deptInput').value.trim();
-    if (!code) return;
+	// --- GESTION DÉPARTEMENTS (recherche) ---
+	async function searchDepartment() {
+		const code = document.getElementById('deptInput').value.trim();
+		if (!code) return;
 
-    // 1. Vérifier si déjà présent
-    if (activeDeptLayers[code]) {
-        alert("Ce département est déjà affiché.");
-        return;
-    }
+		if (activeDeptLayers[code]) {
+			alert("Ce département est déjà affiché.");
+			return;
+		}
 
-    try {
-        // D'abord, récupérer les informations du département
-        const deptResponse = await fetch(`https://geo.api.gouv.fr/departements/${code}`);
-        
-        if (!deptResponse.ok) {
-            throw new Error("Code département introuvable");
-        }
-        
-        const deptData = await deptResponse.json();
-        let nomDept = deptData.nom; // Récupère le nom du département (en majuscules)
-        
-        // Formater le nom avec seulement la première lettre en majuscule
-        nomDept = formatDepartmentName(nomDept);
+		try {
+			const deptResponse = await fetch(`https://geo.api.gouv.fr/departements/${code}`);
+			
+			if (!deptResponse.ok) {
+				throw new Error("Code département introuvable");
+			}
+			
+			const deptData = await deptResponse.json();
+			let nomDept = deptData.nom;
+			nomDept = formatDepartmentName(nomDept);
 
-        // Ensuite, récupérer les communes du département
-        const response = await fetch(`https://geo.api.gouv.fr/departements/${code}/communes?format=geojson&geometry=contour&simplify=0.001`);
-        
-        if (!response.ok) {
-            throw new Error("Code introuvable");
-        }
+			const response = await fetch(`https://geo.api.gouv.fr/departements/${code}/communes?format=geojson&geometry=contour&simplify=0.001`);
+			
+			if (!response.ok) {
+				throw new Error("Code introuvable");
+			}
 
-        const data = await response.json();
+			const data = await response.json();
 
-        // 3. Vérifier si l'API a renvoyé des données vides
-        if (!data.features || data.features.length === 0) {
-            throw new Error("Aucune donnée pour ce code");
-        }
+			if (!data.features || data.features.length === 0) {
+				throw new Error("Aucune donnée pour ce code");
+			}
 
-        // 4. Création du calque et du badge
-        const layer = L.geoJSON(data, {
-            style: {
-                color: "#34495e",
-                fillColor: "#34495e",
-                fillOpacity: 0.5,
-                weight: 1
-            },
-            onEachFeature: function(feature, layer) {
-                layer.on('click', function(e) {
-                    L.DomEvent.stopPropagation(e);
-                    addCommuneToList(feature.properties, layer);
-                });
-                
-                layer.bindTooltip(feature.properties.nom, { sticky: true, opacity: 0.8 });
-            }
-        }).addTo(map);
-        layer.bringToBack();
+			// Styles par défaut
+			const defaultFillColor = "#34495e";
+			const defaultStrokeColor = "#2c3e50";
+			const defaultFillOpacity = 0.5;
+			const defaultStrokeOpacity = 1.0;
+			const defaultStrokeWeight = 2;
+			const defaultStrokeStyle = "solid";
 
-        activeDeptLayers[code] = layer;
-        
-        // Création du bouton visuel avec le nom formaté
-        createDeptButton(code, nomDept);
-        
-        // Ajuster la vue de la carte
-        map.fitBounds(layer.getBounds());
-        document.getElementById('deptInput').value = ""; // Vider le champ
+			const layer = L.geoJSON(data, {
+				style: {
+					color: defaultStrokeColor,
+					fillColor: defaultFillColor,
+					fillOpacity: defaultFillOpacity,
+					opacity: defaultStrokeOpacity,
+					weight: defaultStrokeWeight,
+					dashArray: null
+				},
+				onEachFeature: function(feature, layer) {
+					layer.on('click', function(e) {
+						L.DomEvent.stopPropagation(e);
+						addCommuneToList(feature.properties, layer);
+					});
+					
+					layer.bindTooltip(feature.properties.nom, { sticky: true, opacity: 0.8 });
+				}
+			}).addTo(map);
+			layer.bringToBack();
 
-    } catch (error) {
-        console.error("Erreur:", error);
-        alert(`Département ${code} introuvable. Vérifiez le code (ex: 03 pour l'Allier).`);
-    }
-}
+			activeDeptLayers[code] = layer;
+			createDeptButton(code, nomDept);
+			
+			map.fitBounds(layer.getBounds());
+			document.getElementById('deptInput').value = "";
+
+		} catch (error) {
+			console.error("Erreur:", error);
+			alert(`Département ${code} introuvable. Vérifiez le code (ex: 03 pour l'Allier).`);
+		}
+	}
 
 function formatDepartmentName(nom) {
     return nom.split('-').map(part => {
@@ -2977,43 +3458,48 @@ function formatDepartmentName(nom) {
     }).join('-');
 }
 
-function openDeptSettings(code) {
-    const modal = document.getElementById('deptSettingsModal');
-    const layer = activeDeptLayers[code];
-    if (!layer) return;
+	function openDeptSettings(code) {
+		const modal = document.getElementById('deptSettingsModal');
+		const layer = activeDeptLayers[code];
+		if (!layer) return;
 
-    document.getElementById('current-dept-code').value = code;
-    document.getElementById('dept-modal-title').innerText = `Réglages Dept. ${code}`;
-    
-    // Récupération du style actuel
-    const layers = layer.getLayers ? layer.getLayers() : [];
-    const currentStyle = layers.length > 0 ? layers[0].options : layer.options;
+		document.getElementById('current-dept-code').value = code;
+		document.getElementById('dept-modal-title').innerText = `Réglages Dept. ${code}`;
+		
+		// Récupération du style actuel
+		const layers = layer.getLayers ? layer.getLayers() : [];
+		const currentStyle = layers.length > 0 ? layers[0].options : layer.options;
 
-    const currentColor = currentStyle.fillColor || currentStyle.color || "#34495e";
-    const currentFillOpacity = currentStyle.fillOpacity !== undefined ? currentStyle.fillOpacity : 0.5;
-    const currentStrokeOpacity = currentStyle.opacity !== undefined ? currentStyle.opacity : 1.0;
+		const fillColor = currentStyle.fillColor || currentStyle.color || "#34495e";
+		const strokeColor = currentStyle.color || "#34495e";
+		const fillOpacity = currentStyle.fillOpacity !== undefined ? currentStyle.fillOpacity : 0.5;
+		const strokeOpacity = currentStyle.opacity !== undefined ? currentStyle.opacity : 1.0;
+		const strokeWeight = currentStyle.weight !== undefined ? currentStyle.weight : 2;
+		const strokeStyle = currentStyle.dashArray ? getStrokeStyleFromDashArray(currentStyle.dashArray) : "solid";
 
-    // Remplissage de la modale
-    document.getElementById('modal-dept-color').value = currentColor;
-    
-    // Opacité Fond
-    document.getElementById('modal-dept-opacity-range').value = currentFillOpacity;
-    document.getElementById('modal-dept-opacity-val').innerText = currentFillOpacity;
-    
-    // Opacité Contour
-    document.getElementById('modal-dept-stroke-opacity-range').value = currentStrokeOpacity;
-    document.getElementById('modal-dept-stroke-opacity-val').innerText = currentStrokeOpacity;
+		// Remplissage de la modale
+		document.getElementById('modal-dept-fill-color').value = fillColor;
+		document.getElementById('modal-dept-stroke-color').value = strokeColor;
+		
+		document.getElementById('modal-dept-fill-opacity-range').value = fillOpacity;
+		document.getElementById('modal-dept-fill-opacity-val').innerText = fillOpacity;
+		
+		document.getElementById('modal-dept-stroke-opacity-range').value = strokeOpacity;
+		document.getElementById('modal-dept-stroke-opacity-val').innerText = strokeOpacity;
+		
+		document.getElementById('modal-dept-stroke-weight').value = strokeWeight;
+		document.getElementById('modal-dept-stroke-style').value = strokeStyle;
 
-    // Mise à jour des textes en temps réel
-    document.getElementById('modal-dept-opacity-range').oninput = function() {
-        document.getElementById('modal-dept-opacity-val').innerText = this.value;
-    };
-    document.getElementById('modal-dept-stroke-opacity-range').oninput = function() {
-        document.getElementById('modal-dept-stroke-opacity-val').innerText = this.value;
-    };
+		// Mise à jour des textes en temps réel
+		document.getElementById('modal-dept-fill-opacity-range').oninput = function() {
+			document.getElementById('modal-dept-fill-opacity-val').innerText = this.value;
+		};
+		document.getElementById('modal-dept-stroke-opacity-range').oninput = function() {
+			document.getElementById('modal-dept-stroke-opacity-val').innerText = this.value;
+		};
 
-    modal.style.display = 'flex';
-}
+		modal.style.display = 'flex';
+	}
 
 function closeDeptModal() {
     document.getElementById('deptSettingsModal').style.display = 'none';
@@ -3021,70 +3507,130 @@ function closeDeptModal() {
 
 function applyDeptSettings() {
     const code = document.getElementById('current-dept-code').value;
-    const newColor = document.getElementById('modal-dept-color').value;
-    const newFillOpacity = parseFloat(document.getElementById('modal-dept-opacity-range').value);
-    const newStrokeOpacity = parseFloat(document.getElementById('modal-dept-stroke-opacity-range').value);
+    const fillColor = document.getElementById('modal-dept-fill-color').value;
+    const strokeColor = document.getElementById('modal-dept-stroke-color').value;
+    const fillOpacity = parseFloat(document.getElementById('modal-dept-fill-opacity-range').value);
+    const strokeOpacity = parseFloat(document.getElementById('modal-dept-stroke-opacity-range').value);
+    const strokeWeight = parseFloat(document.getElementById('modal-dept-stroke-weight').value);
+    const strokeStyle = document.getElementById('modal-dept-stroke-style').value;
+    
+    // Obtenir le dashArray correspondant au type de trait
+    const dashArray = getDashArrayFromStyle(strokeStyle);
     
     if (activeDeptLayers[code]) {
         activeDeptLayers[code].setStyle({
-            color: newColor,           // Couleur contour
-            fillColor: newColor,       // Couleur fond
-            opacity: newStrokeOpacity,  // Opacité contour (stroke)
-            fillOpacity: newFillOpacity // Opacité fond (fill)
+            color: strokeColor,           // Couleur du contour
+            fillColor: fillColor,         // Couleur du fond
+            fillOpacity: fillOpacity,     // Opacité du fond
+            opacity: strokeOpacity,       // Opacité du contour
+            weight: strokeWeight,         // Épaisseur du contour
+            dashArray: dashArray          // Type de trait
         });
         activeDeptLayers[code].bringToBack();
-
-        // Mise à jour des valeurs stockées dans le badge (pour compatibilité fonctions communes)
-        const btn = document.getElementById(`btn-dept-${code}`);
-        if (btn) {
-            btn.querySelector('.dept-color-picker').value = newColor;
-            document.querySelector(`.dept-opacity-${code}`).innerText = newFillOpacity;
+        
+        // Mise à jour des valeurs stockées dans le badge
+        const container = document.getElementById(`container-dept-${code}`);
+        if (container) {
+            const fillPicker = container.querySelector('.dept-fill-color-picker');
+            const strokePicker = container.querySelector('.dept-stroke-color-picker');
+            if (fillPicker) fillPicker.value = fillColor;
+            if (strokePicker) strokePicker.value = strokeColor;
+            
+            document.querySelector(`.dept-fill-opacity-${code}`).innerText = fillOpacity;
+            document.querySelector(`.dept-stroke-opacity-${code}`).innerText = strokeOpacity;
+            document.querySelector(`.dept-stroke-weight-${code}`).innerText = strokeWeight;
+            document.querySelector(`.dept-stroke-style-${code}`).innerText = strokeStyle;
         }
     }
 
     // Mise à jour des couleurs des communes liées
     selectedCommunes.forEach(com => {
         if (com.code.startsWith(code) && com._mapLayer) {
-            com._mapLayer.setStyle({ color: newColor });
+            com._mapLayer.setStyle({ color: strokeColor, fillColor: fillColor });
         }
     });
 
     closeDeptModal();
 }
-function createDeptButton(code, nom) {
-    const container = document.getElementById('dept-buttons-container');
-    const div = document.createElement('div');
-    // On utilise flex pour aligner proprement tous les éléments sur une ligne
-    div.className = 'btn-dept-container'; 
-    div.id = `container-dept-${code}`;
-    div.style.display = "flex";
-    div.style.alignItems = "center";
-    div.style.marginBottom = "5px";
-    div.style.background = "#34495e";
-    div.style.color = "white";
-    div.style.borderRadius = "15px";
-    div.style.padding = "2px 10px";
-    div.style.boxShadow = "0 2px 5px rgba(0,0,0,0.2)";
 
-    div.innerHTML = `
-        <div style="display: flex; align-items: center; cursor: default; flex-grow: 1;">
-            <span onclick="openDeptSettings('${code}')" style="cursor:pointer; margin-right:8px;" title="Réglages">✏️</span>
-            <span style="font-weight:bold; margin-right:5px;">${code}</span>
-            <span style="margin-right:10px;">- ${nom}</span>
-        </div>
-        
-        <div style="display: flex; align-items: center; gap: 8px;">
-            <span id="eye-dept-${code}" onclick="toggleDeptVisibility('${code}')" style="cursor:pointer;" title="Masquer/Afficher">👁️</span>
-            <span onclick="removeDepartment('${code}')" style="cursor:pointer; font-size: 14px;" title="Supprimer département">🗑️</span>
-        </div>
+		function createDeptButton(code, nom) {
+			const container = document.getElementById('dept-buttons-container');
+			const div = document.createElement('div');
+			div.className = 'btn-dept-container'; 
+			div.id = `container-dept-${code}`;
+			div.style.display = "flex";
+			div.style.alignItems = "center";
+			div.style.marginBottom = "5px";
+			div.style.background = "#34495e";
+			div.style.color = "white";
+			div.style.borderRadius = "15px";
+			div.style.padding = "2px 10px";
+			div.style.boxShadow = "0 2px 5px rgba(0,0,0,0.2)";
 
-        <input type="color" class="dept-color-picker" value="#34495e" style="display:none">
-        <span class="dept-opacity-${code}" style="display:none">0.5</span>
-    `;
-    
-    container.appendChild(div);
-    updateCounters();
-}
+			// Récupérer les styles actuels du département (si existants)
+			const layer = activeDeptLayers[code];
+			let currentFillColor = "#34495e";
+			let currentStrokeColor = "#34495e";
+			let currentFillOpacity = 0.5;
+			let currentStrokeOpacity = 1.0;
+			let currentStrokeWeight = 2;
+			let currentStrokeStyle = "solid";
+			
+			if (layer) {
+				const layers = layer.getLayers ? layer.getLayers() : [];
+				const style = layers.length > 0 ? layers[0].options : layer.options;
+				currentFillColor = style.fillColor || style.color || "#34495e";
+				currentStrokeColor = style.color || "#34495e";
+				currentFillOpacity = style.fillOpacity || 0.5;
+				currentStrokeOpacity = style.opacity !== undefined ? style.opacity : 1.0;
+				currentStrokeWeight = style.weight !== undefined ? style.weight : 2;
+				currentStrokeStyle = style.dashArray ? getStrokeStyleFromDashArray(style.dashArray) : "solid";
+			}
+
+			div.innerHTML = `
+				<div style="display: flex; align-items: center; cursor: default; flex-grow: 1;">
+					<span onclick="openDeptSettings('${code}')" style="cursor:pointer; margin-right:8px;" title="Réglages">✏️</span>
+					<span style="font-weight:bold; margin-right:5px;">${code}</span>
+					<span style="margin-right:10px;">- ${nom}</span>
+				</div>
+				
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<span id="eye-dept-${code}" onclick="toggleDeptVisibility('${code}')" style="cursor:pointer;" title="Masquer/Afficher">👁️</span>
+					<span onclick="removeDepartment('${code}')" style="cursor:pointer; font-size: 14px;" title="Supprimer département">🗑️</span>
+				</div>
+
+				<!-- Stockage des styles pour persistance -->
+				<input type="color" class="dept-fill-color-picker" value="${currentFillColor}" style="display:none">
+				<input type="color" class="dept-stroke-color-picker" value="${currentStrokeColor}" style="display:none">
+				<span class="dept-fill-opacity-${code}" style="display:none">${currentFillOpacity}</span>
+				<span class="dept-stroke-opacity-${code}" style="display:none">${currentStrokeOpacity}</span>
+				<span class="dept-stroke-weight-${code}" style="display:none">${currentStrokeWeight}</span>
+				<span class="dept-stroke-style-${code}" style="display:none">${currentStrokeStyle}</span>
+			`;
+			
+			container.appendChild(div);
+			updateCounters();
+		}
+
+		// Fonction utilitaire pour convertir dashArray en type de trait
+		function getStrokeStyleFromDashArray(dashArray) {
+			if (!dashArray) return "solid";
+			const dash = dashArray.toString();
+			if (dash === "5,5") return "dashed";
+			if (dash === "1,3") return "dotted";
+			if (dash === "5,3,1,3") return "dashdot";
+			return "solid";
+		}
+
+		// Fonction utilitaire pour convertir type de trait en dashArray
+		function getDashArrayFromStyle(style) {
+			switch(style) {
+				case "dashed": return "5,5";
+				case "dotted": return "1,3";
+				case "dashdot": return "5,3,1,3";
+				default: return null;
+			}
+		}
 
 
 function toggleDeptVisibility(code) {
@@ -3227,18 +3773,15 @@ async function toggleDeptBoundaries(code, btn, selectedColor) {
         btn.classList.remove('active');
         btn.style.backgroundColor = "#34495e";
     } else {
-        // Récupérer la couleur actuelle du sélecteur
-        const picker = btn.querySelector('.dept-color-picker');
-        const currentColor = picker ? picker.value : selectedColor;
-        
-        // Récupérer l'opacité actuelle du département
-        const opacitySpan = document.querySelector(`.dept-opacity-${code}`);
-        const deptOpacity = opacitySpan ? parseFloat(opacitySpan.innerText) : 0.5;
-        
-        // Calculer l'opacité pour les futures communes sélectionnées
-        let communeOpacity = deptOpacity + 0.3;
-        communeOpacity = Math.min(0.9, communeOpacity);
-        communeOpacity = Math.round(communeOpacity * 10) / 10;
+        const fillPicker = btn.querySelector('.dept-fill-color-picker');
+        const strokePicker = btn.querySelector('.dept-stroke-color-picker');
+        const fillColor = fillPicker ? fillPicker.value : "#34495e";
+        const strokeColor = strokePicker ? strokePicker.value : "#2c3e50";
+        const fillOpacity = parseFloat(document.querySelector(`.dept-fill-opacity-${code}`)?.innerText || "0.5");
+        const strokeOpacity = parseFloat(document.querySelector(`.dept-stroke-opacity-${code}`)?.innerText || "1.0");
+        const strokeWeight = parseFloat(document.querySelector(`.dept-stroke-weight-${code}`)?.innerText || "2");
+        const strokeStyle = document.querySelector(`.dept-stroke-style-${code}`)?.innerText || "solid";
+        const dashArray = getDashArrayFromStyle(strokeStyle);
         
         const statusSpan = btn.querySelector('span:last-child');
         const originalText = statusSpan.innerText;
@@ -3251,10 +3794,12 @@ async function toggleDeptBoundaries(code, btn, selectedColor) {
 
             const layer = L.geoJSON(geojson, {
                 style: {
-                    color: currentColor,
-                    weight: 2,
-                    fillOpacity: deptOpacity, // Opacité du département
-                    fillColor: currentColor
+                    color: strokeColor,
+                    fillColor: fillColor,
+                    fillOpacity: fillOpacity,
+                    opacity: strokeOpacity,
+                    weight: strokeWeight,
+                    dashArray: dashArray
                 },
                 interactive: true,
                 pane: 'overlayPane',
@@ -3267,20 +3812,7 @@ async function toggleDeptBoundaries(code, btn, selectedColor) {
                     
                     layer.on('click', function(e) {
                         L.DomEvent.stopPropagation(e);
-                        
-                        const deptNom = btn.querySelector('span:last-child').innerText.split(' - ')[1] || code;
-                        
-                        const fakeLayerInstance = {
-                            feature: feature
-                        };
-                        
-                        // Stocker l'opacité cible pour la commune
-                        addCommuneToList({
-                            code: feature.properties.code,
-                            nom: feature.properties.nom,
-                            departement: deptNom,
-                            population: feature.properties.population || 'N/C'
-                        }, fakeLayerInstance, communeOpacity); // Passer l'opacité cible
+                        addCommuneToList(feature.properties, layer);
                     });
                 }
             }).addTo(map);
@@ -3300,7 +3832,6 @@ async function toggleDeptBoundaries(code, btn, selectedColor) {
     }
 }
 
-
 function removeDepartment(code) {
     if (activeDeptLayers[code]) {
         map.removeLayer(activeDeptLayers[code]);
@@ -3312,196 +3843,180 @@ function removeDepartment(code) {
 }
 
 
-// --- IMPORT KML ---
-function importFromKML() {
-    document.getElementById('importKML').click();
-}
+	// --- IMPORT KML ---
+	function importFromKML() {
+		document.getElementById('importKML').click();
+	}
 
-async function handleKMLImport(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+	async function handleKMLImport(event) {
+		const file = event.target.files[0];
+		if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        try {
-            let kmlText = e.target.result;
-            
-            // Gestion des fichiers KMZ (zippés)
-            if (file.name.toLowerCase().endsWith('.kmz')) {
-                // Décompresser le KMZ (simplifié - on suppose que c'est un zip avec un seul KML)
-                const zip = new JSZip();
-                const zipContent = await zip.loadAsync(kmlText);
-                const kmlFile = Object.values(zipContent.files).find(f => f.name.toLowerCase().endsWith('.kml'));
-                if (kmlFile) {
-                    kmlText = await kmlFile.async('string');
-                } else {
-                    alert("Aucun fichier KML trouvé dans l'archive KMZ.");
-                    return;
-                }
-            }
+		const reader = new FileReader();
+		reader.onload = async (e) => {
+			try {
+				let kmlText = e.target.result;
+				
+				if (file.name.toLowerCase().endsWith('.kmz')) {
+					const zip = new JSZip();
+					const zipContent = await zip.loadAsync(kmlText);
+					const kmlFile = Object.values(zipContent.files).find(f => f.name.toLowerCase().endsWith('.kml'));
+					if (kmlFile) {
+						kmlText = await kmlFile.async('string');
+					} else {
+						alert("Aucun fichier KML trouvé dans l'archive KMZ.");
+						return;
+					}
+				}
 
-            // Parser le KML
-            const parser = new DOMParser();
-            const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
-            
-            // Vérifier les erreurs de parsing
-            const parserError = kmlDoc.querySelector('parsererror');
-            if (parserError) {
-                throw new Error('Erreur de parsing KML');
-            }
+				const parser = new DOMParser();
+				const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
+				
+				const parserError = kmlDoc.querySelector('parsererror');
+				if (parserError) {
+					throw new Error('Erreur de parsing KML');
+				}
 
-            // Extraire les Placemarks
-            const placemarks = kmlDoc.querySelectorAll('Placemark');
-            let importedCount = 0;
+				const placemarks = kmlDoc.querySelectorAll('Placemark');
+				let importedCount = 0;
 
-            for (const placemark of placemarks) {
-                const name = getKMLTagValue(placemark, 'name') || 'Point importé';
-                const description = getKMLTagValue(placemark, 'description') || '';
-                
-                // Extraire les coordonnées
-                const point = placemark.querySelector('Point coordinates');
-                if (point) {
-                    const coordsText = point.textContent.trim();
-                    const coords = coordsText.split(',').map(Number);
-                    if (coords.length >= 2) {
-                        const lon = coords[0];
-                        const lat = coords[1];
-                        
-                        // Extraire l'adresse depuis la description si possible
-                        let numero = '', rue = '', cp = '', ville = '';
-                        const adresseMatch = description.match(/([0-9]+)\s+(.+?)(?:\s+([0-9]{5})\s+(.+))?/);
-                        if (adresseMatch) {
-                            numero = adresseMatch[1] || '';
-                            rue = adresseMatch[2] || '';
-                            cp = adresseMatch[3] || '';
-                            ville = adresseMatch[4] || '';
-                        }
+				for (const placemark of placemarks) {
+					const name = getKMLTagValue(placemark, 'name') || 'Point importé';
+					const description = getKMLTagValue(placemark, 'description') || '';
+					
+					const point = placemark.querySelector('Point coordinates');
+					if (point) {
+						const coordsText = point.textContent.trim();
+						const coords = coordsText.split(',').map(Number);
+						if (coords.length >= 2) {
+							const lon = coords[0];
+							const lat = coords[1];
+							
+							let numero = '', rue = '', cp = '', ville = '';
+							const adresseMatch = description.match(/([0-9]+)\s+(.+?)(?:\s+([0-9]{5})\s+(.+))?/);
+							if (adresseMatch) {
+								numero = adresseMatch[1] || '';
+								rue = adresseMatch[2] || '';
+								cp = adresseMatch[3] || '';
+								ville = adresseMatch[4] || '';
+							}
 
-                        // Extraire les données étendues
-                        const extendedData = placemark.querySelector('ExtendedData');
-                        let categorie = "Par défaut";
-                        let layerId = 'default';
-                        let iconType = "circle";
-                        let popupAlwaysOn = false;
-                        let circle = null;
-                        let isochrone = null;
+							const extendedData = placemark.querySelector('ExtendedData');
+							let categorie = "Par défaut";
+							let layerId = 'default';
+							let circles = [];
+							let isochrone = null;
 
-                        if (extendedData) {
-                            const dataNodes = extendedData.querySelectorAll('Data');
-                            dataNodes.forEach(data => {
-                                const name = data.getAttribute('name');
-                                const value = getKMLTagValue(data, 'value');
-                                
-                                switch(name) {
-                                    case 'categorie':
-                                        categorie = value || categorie;
-                                        break;
-                                    case 'couche':
-                                        // Chercher ou créer la couche
-                                        if (value) {
-                                            const existingLayer = layers.find(l => l.name === value);
-                                            if (existingLayer) {
-                                                layerId = existingLayer.id;
-                                            } else {
-                                                const newLayer = {
-                                                    id: generateId(),
-                                                    name: value,
-                                                    color: '#808080',
-                                                    visible: true
-                                                };
-                                                layers.push(newLayer);
-                                                layerId = newLayer.id;
-                                            }
-                                        }
-                                        break;
-                                    case 'cercle_rayon_km':
-                                    case 'cercle_couleur':
-                                        // Géré séparément
-                                        break;
-                                }
-                            });
+							if (extendedData) {
+								const dataNodes = extendedData.querySelectorAll('Data');
+								dataNodes.forEach(data => {
+									const dataName = data.getAttribute('name');
+									const value = getKMLTagValue(data, 'value');
+									
+									switch(dataName) {
+										case 'categorie':
+											categorie = value || categorie;
+											break;
+										case 'couche':
+											if (value) {
+												const existingLayer = layers.find(l => l.name === value);
+												if (existingLayer) {
+													layerId = existingLayer.id;
+												} else {
+													const newLayer = {
+														id: generateId(),
+														name: value,
+														color: '#808080',
+														visible: true
+													};
+													layers.push(newLayer);
+													layerId = newLayer.id;
+												}
+											}
+											break;
+										case 'cercles_json':
+											if (value) {
+												try {
+													const parsed = JSON.parse(value);
+													if (Array.isArray(parsed)) {
+														circles = parsed.map(c => ({
+															radius: c.radius,
+															fillColor: c.fillColor || c.color,
+															borderColor: c.borderColor || c.color,
+															borderWeight: c.borderWeight || 2,
+															color: c.fillColor || c.color,
+															layer: null
+														}));
+													}
+												} catch (e) {
+													console.warn("Erreur parsing cercles_json:", e);
+												}
+											}
+											break;
+										case 'isochrone_duree_min':
+										case 'isochrone_mode':
+											// Géré via l'objet isochrone
+											break;
+									}
+								});
 
-                            // Récupérer les données du cercle
-                            const rayonKm = getExtendedDataValue(extendedData, 'cercle_rayon_km');
-                            const couleurCercle = getExtendedDataValue(extendedData, 'cercle_couleur');
-                            if (rayonKm && couleurCercle && parseFloat(rayonKm) > 0) {
-                                circle = {
-                                    radiusKm: parseFloat(rayonKm),
-                                    color: couleurCercle
-                                };
-                            }
+								// Récupération des données d'isochrone
+								const isochroneDuration = getExtendedDataValue(extendedData, 'isochrone_duree_min');
+								const isochroneMode = getExtendedDataValue(extendedData, 'isochrone_mode');
+								if (isochroneDuration && isochroneMode) {
+									isochrone = {
+										duration: parseInt(isochroneDuration),
+										mode: isochroneMode,
+										color: '#ff7800',
+										geometry: null
+									};
+								}
+							}
 
-                            // Récupérer les données d'isochrone
-                            const isochroneData = getExtendedDataValue(extendedData, 'isochrone');
-                            if (isochroneData) {
-                                try {
-                                    isochrone = JSON.parse(isochroneData);
-                                } catch (e) {}
-                            }
-                        }
+							const newLoc = {
+								id: Date.now() + Math.random(),
+								titre: name,
+								numero: numero,
+								rue: rue,
+								cp: cp,
+								ville: ville,
+								lat: lat,
+								lon: lon,
+								categorie: categorie,
+								layerId: layerId,
+								iconType: "circle",
+								popupAlwaysOn: false,
+								circles: circles,
+								isochrone: isochrone
+							};
 
-                        // Créer le point
-                        const newLoc = {
-                            id: Date.now() + Math.random(),
-                            titre: name,
-                            numero: numero,
-                            rue: rue,
-                            cp: cp,
-                            ville: ville,
-                            lat: lat,
-                            lon: lon,
-                            categorie: categorie,
-                            layerId: layerId,
-                            iconType: iconType,
-                            popupAlwaysOn: popupAlwaysOn,
-                            circle: circle,
-                            isochrone: isochrone
-                        };
+							savedLocations.push(newLoc);
+							importedCount++;
+						}
+					}
+				}
 
-                        savedLocations.push(newLoc);
-                        importedCount++;
-                    }
-                }
+				if (importedCount > 0) {
+					refreshUI();
+					alert(`${importedCount} point(s) importé(s) avec succès depuis le KML.`);
+				} else {
+					alert("Aucun point trouvé dans le fichier KML.");
+				}
 
-                // Gérer les polygones (cercles, isochrones)
-                const polygon = placemark.querySelector('Polygon');
-                if (polygon && name.includes('Cercle de')) {
-                    // C'est un cercle - on le rattache au point correspondant
-                    const pointName = name.replace('Cercle de ', '');
-                    const loc = savedLocations.find(l => l.titre === pointName);
-                    if (loc) {
-                        const coords = polygon.querySelector('coordinates').textContent.trim();
-                        // On ne peut pas reconstruire exactement le cercle, on garde juste une indication
-                        if (!loc.circle) {
-                            loc.circle = { radiusKm: 5, color: '#3388ff' };
-                        }
-                    }
-                }
-            }
+			} catch (error) {
+				alert("Erreur lors de l'import KML : " + error.message);
+				console.error(error);
+			} finally {
+				event.target.value = '';
+			}
+		};
 
-            if (importedCount > 0) {
-                refreshUI();
-                alert(`${importedCount} point(s) importé(s) avec succès depuis le KML.`);
-            } else {
-                alert("Aucun point trouvé dans le fichier KML.");
-            }
-
-        } catch (error) {
-            alert("Erreur lors de l'import KML : " + error.message);
-            console.error(error);
-        } finally {
-            event.target.value = '';
-        }
-    };
-
-    if (file.name.toLowerCase().endsWith('.kmz')) {
-        // Pour KMZ, on lit en tant que ArrayBuffer
-        reader.readAsArrayBuffer(file);
-    } else {
-        // Pour KML, on lit en texte
-        reader.readAsText(file);
-    }
-}
+		if (file.name.toLowerCase().endsWith('.kmz')) {
+			reader.readAsArrayBuffer(file);
+		} else {
+			reader.readAsText(file);
+		}
+	}
 
 // Fonctions utilitaires pour le parsing KML
 function getKMLTagValue(parent, tagName) {
@@ -3999,7 +4514,7 @@ function openHelpInNewWindow() {
             <p>Les couches servent au filtrage et &agrave; l'organisation. Le bouton <strong>🗂️ Couches</strong> ouvre la gestion : ajouter, renommer, coloriser, supprimer des couches. Cocher/d&eacute;cocher une couche masque/affiche tous ses points d'un coup.</p>
 
             <h3>Cercles de rayon</h3>
-            <p>Cliquer sur <strong>⭕</strong> dans la liste du point. D&eacute;finir le rayon en kilom&egrave;tres et la couleur. Le cercle s'affiche autour du point et est export&eacute; avec lui.</p>
+            <p>Cliquer sur <strong>⭕</strong> dans la liste du point. D&eacute;finir le rayon en kilom&egrave;tres et la couleur. Le cercle s'affiche autour du point et est export&eacute; avec lui. Il est possible de positionner plusieurs cercles sur un même point GPS.</p>
 
             <h3>Isochrones (zones de temps de trajet)</h3>
             <p>Cliquer sur <strong>⏱️</strong>. Choisir le mode (pied, v&eacute;lo, voiture), la dur&eacute;e (minutes) et la couleur. Une cl&eacute; API OpenRouteService est n&eacute;cessaire.</p>
@@ -4032,7 +4547,7 @@ function openHelpInNewWindow() {
 
             <h3>Personnaliser l'apparence</h3>
             <ul>
-                <li><strong>Couleur</strong> : Cliquer sur le rond de couleur dans le badge d&eacute;partement pour changer couleur, opacit&eacute; du contour et opacit&eacute; du fond</li>
+                <li><strong>Couleur</strong> : Cliquer sur le rond de couleur dans le badge d&eacute;partement pour changer la couleur, l'opacit&eacute; du contour et du fond</li>
                 <li><strong>Opacit&eacute;</strong> : Utiliser les boutons &minus; / + du badge pour ajuster l'opacit&eacute; du fond</li>
                 <li><strong>Masquer / R&eacute;afficher</strong> : Cliquer sur 👁️ dans le badge. La couche d&eacute;partement reste toujours en arri&egrave;re-plan lors du r&eacute;affichage</li>
                 <li><strong>Supprimer</strong> : Cliquer sur 🗑️ dans le badge</li>
@@ -4156,7 +4671,7 @@ function openHelpInNewWindow() {
     </div>
 
     <div class="footer">
-        <p>Version : 20/03/2026 - J-F D, Lyc&eacute;e Agricole du Bourbonnais</p>
+        <p>Version : 27/03/2026 - J-F D, Lyc&eacute;e Agricole du Bourbonnais</p>
 		<small>Outil en HTML Javascript créé dans le cadre d'une expérimentation de Programmation Assistée par Itelligence Artificielle.</small>
     </div>
 
@@ -4266,6 +4781,19 @@ function fallbackDownload(blob, fileName) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+}
+
+function toggleSidebar() {
+    const container = document.querySelector('.main-container');
+    const btn = document.getElementById('toggle-sidebar');
+    container.classList.toggle('sidebar-hidden');
+    
+    if (container.classList.contains('sidebar-hidden')) {
+        btn.innerHTML = '〈'; // Flèche vers la gauche
+    } else {
+        btn.innerHTML = '〉'; // Flèche vers la droite
+    }
+    setTimeout(() => map.invalidateSize(), 350); // Recalcule la taille de la carte après l'animation
 }
 
 </script>
