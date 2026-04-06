@@ -960,7 +960,7 @@ L.control.layers(baseMaps).addTo(map);
 
 // NOUVEAU COPYRIGHT CENTRÉ 
 const copyrightDiv = L.DomUtil.create('div', 'map-copyright', document.getElementById('map'));
-copyrightDiv.innerHTML = '©️ OpenStreetMap contributors | ©️ 27/03/2026 Lycée Agricole du Bourbonnais';
+copyrightDiv.innerHTML = '©️ OpenStreetMap contributors | ©️ 06/04/2026 Lycée Agricole du Bourbonnais';
 
 
     // Variables globales
@@ -2657,12 +2657,6 @@ function focusPoint(id) {
 				"Visible": layer.visible ? "true" : "false"
 			}));
 
-			if (layersData.length > 0) {
-				const wsLayers = XLSX.utils.json_to_sheet(layersData);
-				XLSX.utils.book_append_sheet(wb, wsLayers, "Couches");
-			}
-
-
 			// Vérification des données
 			if (pointsData.length === 0 && communesData.length === 0 && deptsData.length === 0) {
 				alert("La carte est vide. Rien à enregistrer.");
@@ -2670,6 +2664,11 @@ function focusPoint(id) {
 			}
 
 			const wb = XLSX.utils.book_new();
+
+			if (layersData.length > 0) {
+				const wsLayers = XLSX.utils.json_to_sheet(layersData);
+				XLSX.utils.book_append_sheet(wb, wsLayers, "Couches");
+			}
 			
 			if (pointsData.length > 0) {
 				const wsPoints = XLSX.utils.json_to_sheet(pointsData);
@@ -4671,7 +4670,7 @@ function openHelpInNewWindow() {
     </div>
 
     <div class="footer">
-        <p>Version : 27/03/2026 - J-F D, Lyc&eacute;e Agricole du Bourbonnais</p>
+        <p>Version : 06/04/2026 - J-F D, Lyc&eacute;e Agricole du Bourbonnais</p>
 		<small>Outil en HTML Javascript créé dans le cadre d'une expérimentation de Programmation Assistée par Itelligence Artificielle.</small>
     </div>
 
